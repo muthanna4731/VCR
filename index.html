@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Preload fonts -->
+    <link rel="preload" href="/src/fonts/instrument-sans.woff2" as="font" crossorigin="" type="font/woff2" />
+    <link rel="preload" href="/src/fonts/lora.woff2" as="font" crossorigin="" type="font/woff2" />
+
+    <!-- Dashboard fonts & icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <!-- Preload hero image -->
+    <link rel="preload" as="image" href="/src/images/house.webp" />
+
+    <!-- SEO -->
+    <title>VCR Builders and Developers</title>
+    <meta name="description" content="Karnataka's most thoughtful layout developers. Premium plots, gated communities, Vastu-compliant." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#046ebc" />
+
+    <!-- PWA: iOS support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VCR" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:title" content="VCR Builders and Developers | Premium Plots in Karnataka" />
+    <meta property="og:description" content="Karnataka's most thoughtful layout developers. Premium plots, gated communities, Vastu-compliant." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/pwa-icon-512.png" type="image/png" />
+</head>
+
+<body class="__variable_3d9088 __variable_c1a059">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        })
+      }
+    </script>
+</body>
+
+</html>

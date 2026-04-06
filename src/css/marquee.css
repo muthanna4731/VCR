@@ -1,0 +1,72 @@
+.marquee-section {
+    padding: 7rem 0 8rem;
+    background: #fff;
+    overflow: hidden;
+    border-top: 1px solid #e8e8e8;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.marquee-label {
+    text-align: center;
+    font-size: 1.3rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #999;
+    margin: 0 0 4rem;
+}
+
+.marquee-track {
+    overflow: hidden;
+    width: 100%;
+}
+
+.marquee-inner {
+    display: flex;
+    align-items: center;
+    gap: 12rem;
+    width: max-content;
+    animation: marquee-scroll 36s linear infinite;
+    will-change: transform;
+}
+
+/* ── Text placeholder logos — replace with <img> when you have files ── */
+.marquee-logo {
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    color: #ccc;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: color 0.3s;
+    cursor: default;
+    user-select: none;
+}
+
+.marquee-logo:hover {
+    color: #046ebc;
+}
+
+/* ── Image logos (swap in once you have files) ── */
+.marquee-inner img {
+    height: 7rem;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.5;
+    filter: grayscale(1);
+    flex-shrink: 0;
+    transition: opacity 0.3s, filter 0.3s;
+}
+
+.marquee-inner img:hover {
+    opacity: 1;
+    filter: grayscale(0);
+}
+
+@keyframes marquee-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.marquee-track:hover .marquee-inner {
+    animation-play-state: paused;
+}
