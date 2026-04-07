@@ -41,7 +41,7 @@ export default function BuyerDocumentsPage() {
         const { data: docData } = await runSupabaseRequest(
           () => supabase
             .from('documents')
-            .select('id, name, category, file_url, is_buyer_visible, created_at')
+            .select('id, name, category, file_url, google_doc_url, is_buyer_visible, created_at')
             .eq('plot_id', planData.plot_id)
             .eq('is_buyer_visible', true)
             .order('created_at', { ascending: false }),
@@ -118,12 +118,12 @@ export default function BuyerDocumentsPage() {
                     </div>
                   </div>
                   <a
-                    href={doc.file_url}
+                    href={doc.google_doc_url ?? doc.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="buyer-doc-download"
                   >
-                    Download ↗
+                    Open ↗
                   </a>
                 </div>
               )

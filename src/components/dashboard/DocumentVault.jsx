@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { runSupabaseMutation, runSupabaseRequest } from '../../lib/supabaseRequest'
 
@@ -24,6 +24,114 @@ const EMPTY_FORM = {
   layout_id: '',
   plot_id: '',
   is_buyer_visible: false,
+}
+
+function LinkModal({ doc, onSave, onClose }) {
+  const [url, setUrl] = useState(doc.google_doc_url ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 50)
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  async function handleSave() {
+    const trimmed = url.trim()
+    if (trimmed && !trimmed.startsWith('http')) { setError('Please enter a valid URL starting with http.'); return }
+    setSaving(true)
+    setError(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('documents').update({ google_doc_url: trimmed || null }).eq('id', doc.id),
+        { label: 'Update document link' }
+      )
+      onSave(trimmed || null)
+    } catch (err) {
+      setError(err.message)
+      setSaving(false)
+    }
+  }
+
+  async function handleRemove() {
+    setSaving(true)
+    setError(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('documents').update({ google_doc_url: null }).eq('id', doc.id),
+        { label: 'Remove document link' }
+      )
+      onSave(null)
+    } catch (err) {
+      setError(err.message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="dash-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Attach Link"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="dash-modal" style={{ maxWidth: '46rem' }}>
+        <div className="dash-modal-header">
+          <div>
+            <h2 className="dash-modal-title">Attach Link</h2>
+            <p style={{ fontSize: '1.3rem', color: '#636366', marginTop: '0.2rem' }}>{doc.name}</p>
+          </div>
+          <button className="dash-modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="dash-form" style={{ paddingTop: 0 }}>
+          {error && <p className="dash-error">{error}</p>}
+
+          <div className="dash-form-group">
+            <label className="dash-form-label">Google Docs / Drive URL</label>
+            <input
+              ref={inputRef}
+              className="dash-form-input"
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://docs.google.com/…"
+            />
+            <span className="dash-form-hint">
+              Clients will be redirected to this link when they open the document. Leave blank to use the original uploaded file.
+            </span>
+          </div>
+
+          <div className="dash-form-actions" style={{ marginTop: '1.6rem' }}>
+            {doc.google_doc_url && (
+              <button
+                type="button"
+                className="dash-btn dash-btn--danger dash-btn--sm"
+                onClick={handleRemove}
+                disabled={saving}
+                style={{ marginRight: 'auto' }}
+              >
+                Remove Link
+              </button>
+            )}
+            <button type="button" className="dash-btn" onClick={onClose}>Cancel</button>
+            <button
+              type="button"
+              className="dash-btn dash-btn--primary"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save Link'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function UploadModal({ layouts, plots, onSave, onClose }) {
@@ -166,6 +274,18 @@ export default function DocumentVault() {
   const [filters, setFilters] = useState({ category: '', layout: '' })
   const [deletingId, setDeletingId] = useState(null)
   const [togglingId, setTogglingId] = useState(null)
+  const [linkDoc, setLinkDoc] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!openMenuId) return
+    function handler(e) {
+      if (!e.target.closest('.dash-doc-menu')) setOpenMenuId(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [openMenuId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -175,7 +295,7 @@ export default function DocumentVault() {
         runSupabaseRequest(
           () => supabase
             .from('documents')
-            .select('id, layout_id, plot_id, name, category, file_url, is_buyer_visible, created_at, site_layouts(name), plots(plot_number, layout_id)')
+            .select('id, layout_id, plot_id, name, category, file_url, google_doc_url, is_buyer_visible, created_at, site_layouts(name), plots(plot_number, layout_id)')
             .order('created_at', { ascending: false }),
           { label: 'Load documents' }
         ),
@@ -286,13 +406,18 @@ export default function DocumentVault() {
                   <tr key={doc.id} className="dash-table-row">
                     <td>
                       <a
-                        href={doc.file_url}
+                        href={doc.google_doc_url ?? doc.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="dash-doc-name-link"
                       >
                         {doc.name} ↗
                       </a>
+                      {doc.google_doc_url && (
+                        <div style={{ fontSize: '1.1rem', color: '#34c759', marginTop: '0.2rem' }}>
+                          ⬡ Google Docs link attached
+                        </div>
+                      )}
                     </td>
                     <td>
                       <span
@@ -323,20 +448,41 @@ export default function DocumentVault() {
                     <td>
                       <div className="dash-table-actions">
                         <a
-                          href={doc.file_url}
+                          href={doc.google_doc_url ?? doc.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="dash-btn dash-btn--sm"
                         >
                           View
                         </a>
-                        <button
-                          className="dash-btn dash-btn--sm dash-btn--danger"
-                          onClick={() => deleteDoc(doc.id)}
-                          disabled={deletingId === doc.id}
-                        >
-                          {deletingId === doc.id ? '…' : 'Delete'}
-                        </button>
+                        <div className="dash-doc-menu">
+                          <button
+                            className="dash-btn dash-btn--sm dash-btn--ghost"
+                            onClick={() => setOpenMenuId(openMenuId === doc.id ? null : doc.id)}
+                            aria-label="More options"
+                          >
+                            ⋯
+                          </button>
+                          {openMenuId === doc.id && (
+                            <div className="dash-doc-menu-dropdown">
+                              <button
+                                className="dash-doc-menu-item"
+                                onClick={() => { setOpenMenuId(null); setLinkDoc(doc) }}
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '1.6rem' }}>link</span>
+                                Attach Link
+                              </button>
+                              <button
+                                className="dash-doc-menu-item dash-doc-menu-item--danger"
+                                onClick={() => { setOpenMenuId(null); deleteDoc(doc.id) }}
+                                disabled={deletingId === doc.id}
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '1.6rem' }}>delete</span>
+                                {deletingId === doc.id ? 'Deleting…' : 'Delete'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -353,6 +499,17 @@ export default function DocumentVault() {
           plots={plots}
           onSave={() => { setShowModal(false); load() }}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {linkDoc && (
+        <LinkModal
+          doc={linkDoc}
+          onSave={(newUrl) => {
+            setDocs(prev => prev.map(d => d.id === linkDoc.id ? { ...d, google_doc_url: newUrl } : d))
+            setLinkDoc(null)
+          }}
+          onClose={() => setLinkDoc(null)}
         />
       )}
     </div>

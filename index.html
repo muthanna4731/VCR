@@ -38,7 +38,11 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      if ('serviceWorker' in navigator) {
+      const isLocalDevHost =
+        location.hostname === 'localhost' ||
+        location.hostname === '127.0.0.1'
+
+      if ('serviceWorker' in navigator && !isLocalDevHost) {
         window.addEventListener('load', function () {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })
         })

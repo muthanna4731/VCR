@@ -54,9 +54,28 @@ export default function LayoutViewPage() {
     return true
   }, [filters.facing, filters.dimensions, filters.status])
 
-  const sortedPlots = useMemo(() =>
-    [...plots].sort((a, b) => a.plotNumber.localeCompare(b.plotNumber, undefined, { numeric: true, sensitivity: 'base' }))
-  , [plots])
+  const FACING_ORDER = ['North', 'East', 'South', 'West']
+
+  const plotsByFacing = useMemo(() => {
+    const sorted = [...plots].sort((a, b) =>
+      a.plotNumber.localeCompare(b.plotNumber, undefined, { numeric: true, sensitivity: 'base' })
+    )
+    const groups = {}
+    for (const plot of sorted) {
+      const facing = plot.facing || 'Other'
+      if (!groups[facing]) groups[facing] = []
+      groups[facing].push(plot)
+    }
+    // Sort groups by FACING_ORDER, then any remaining
+    const ordered = []
+    for (const f of FACING_ORDER) {
+      if (groups[f]) ordered.push({ facing: f, plots: groups[f] })
+    }
+    for (const f of Object.keys(groups)) {
+      if (!FACING_ORDER.includes(f)) ordered.push({ facing: f, plots: groups[f] })
+    }
+    return ordered
+  }, [plots])
 
   // Conditional renders — after all hooks
   if (loading) {
@@ -164,18 +183,28 @@ export default function LayoutViewPage() {
           showCopyLink={true}
         />
 
-        {/* Plot listing */}
-        <div className="prop-plot-section">
-          <div className="prop-plot-chips">
-            {sortedPlots.map(plot => (
-              <PlotChip
-                key={plot.id}
-                plot={plot}
-                isFilteredOut={hasActiveFilters && !plotMatchesFilter(plot)}
-                onClick={setSelectedPlot}
-              />
-            ))}
-          </div>
+        {/* Plot listing grouped by facing */}
+        <div className="prop-plot-sections">
+          {plotsByFacing.map(({ facing, plots: facingPlots }) => (
+            <div key={facing} className="prop-plot-section">
+              <div className="prop-plot-section-title">
+                {facing} Facing
+                <span className="prop-plot-section-count">
+                  {facingPlots.length} {facingPlots.length === 1 ? 'plot' : 'plots'}
+                </span>
+              </div>
+              <div className="prop-plot-chips">
+                {facingPlots.map(plot => (
+                  <PlotChip
+                    key={plot.id}
+                    plot={plot}
+                    isFilteredOut={hasActiveFilters && !plotMatchesFilter(plot)}
+                    onClick={setSelectedPlot}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Gallery */}

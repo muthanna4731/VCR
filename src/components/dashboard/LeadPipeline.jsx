@@ -4,6 +4,26 @@ import { runSupabaseMutation, runSupabaseRequest } from '../../lib/supabaseReque
 
 const LEAD_STATUSES = ['new', 'contacted', 'visit_scheduled', 'visit_completed', 'converted', 'dropped']
 
+const CHANNEL_OPTIONS = [
+  { value: 'website',    label: 'Website Form' },
+  { value: 'site_visit', label: 'Site Visit' },
+  { value: 'referral',   label: 'Referral' },
+  { value: 'phone',      label: 'Phone Call' },
+  { value: 'agent',      label: 'Agent' },
+  { value: 'social',     label: 'Social Media' },
+  { value: 'other',      label: 'Other' },
+]
+
+const CHANNEL_COLORS = {
+  website:    { color: '#046ebc', bg: '#f0f7ff', border: '#cce3f8' },
+  site_visit: { color: '#5856d6', bg: '#f0f0ff', border: '#c7c7fa' },
+  referral:   { color: '#34c759', bg: '#f0fff4', border: '#b7f5c4' },
+  phone:      { color: '#c77700', bg: '#fff8e1', border: '#ffe08a' },
+  agent:      { color: '#ff6b35', bg: '#fff4f0', border: '#ffd4c2' },
+  social:     { color: '#af52de', bg: '#faf0ff', border: '#e8c7fa' },
+  other:      { color: '#636366', bg: '#f5f5f7', border: '#e5e5ea' },
+}
+
 const LEAD_STATUS_CONFIG = {
   new:             { label: 'New',              color: '#636366', bg: '#f5f5f7', border: '#e5e5ea' },
   contacted:       { label: 'Contacted',        color: '#c77700', bg: '#fff8e1', border: '#ffe08a' },
@@ -22,6 +42,7 @@ function LeadEditModal({ lead, isNew, layouts, agents, onSave, onClose }) {
     lead_status: lead.lead_status ?? 'new',
     agent_id:    lead.agent_id ?? '',
     notes:       lead.notes ?? '',
+    channel:     lead.channel ?? 'other',
   })
   const [saving, setSaving]         = useState(false)
   const [error, setError]           = useState(null)
@@ -42,6 +63,7 @@ function LeadEditModal({ lead, isNew, layouts, agents, onSave, onClose }) {
       lead_status: form.lead_status,
       agent_id:    form.agent_id || null,
       notes:       form.notes.trim() || null,
+      channel:     form.channel || 'other',
     }
 
     let err = null
@@ -133,6 +155,18 @@ function LeadEditModal({ lead, isNew, layouts, agents, onSave, onClose }) {
 
           <div className="dash-form-row">
             <div className="dash-form-group">
+              <label className="dash-form-label">Channel of Enquiry</label>
+              <select
+                className="dash-form-select"
+                value={form.channel}
+                onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
+              >
+                {CHANNEL_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="dash-form-group">
               <label className="dash-form-label">Layout</label>
               <select
                 className="dash-form-select"
@@ -143,17 +177,18 @@ function LeadEditModal({ lead, isNew, layouts, agents, onSave, onClose }) {
                 {layouts.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
-            <div className="dash-form-group">
-              <label className="dash-form-label">Assigned Agent</label>
-              <select
-                className="dash-form-select"
-                value={form.agent_id}
-                onChange={e => setForm(f => ({ ...f, agent_id: e.target.value }))}
-              >
-                <option value="">Unassigned</option>
-                {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
+          </div>
+
+          <div className="dash-form-group">
+            <label className="dash-form-label">Assigned Agent</label>
+            <select
+              className="dash-form-select"
+              value={form.agent_id}
+              onChange={e => setForm(f => ({ ...f, agent_id: e.target.value }))}
+            >
+              <option value="">Unassigned</option>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           </div>
 
           <div className="dash-form-group">
@@ -229,7 +264,7 @@ export default function LeadPipeline() {
         runSupabaseRequest(
           () => supabase
             .from('enquiries')
-            .select('id, name, phone, created_at, lead_status, notes, agent_id, layout_id, plot_id, site_layouts(id, name), plots(plot_number), agents(id, name)')
+            .select('id, name, phone, channel, created_at, lead_status, notes, agent_id, layout_id, plot_id, site_layouts(id, name), plots(plot_number), agents(id, name)')
             .order('created_at', { ascending: false }),
           { label: 'Load leads' }
         ),
@@ -336,6 +371,7 @@ export default function LeadPipeline() {
                 <th>Date</th>
                 <th>Name</th>
                 <th>Phone</th>
+                <th>Channel</th>
                 <th>Layout / Plot</th>
                 <th>Status</th>
                 <th>Agent</th>
@@ -352,6 +388,21 @@ export default function LeadPipeline() {
                     </td>
                     <td className="dash-table-name">{lead.name}</td>
                     <td>{lead.phone}</td>
+                    <td>
+                      {(() => {
+                        const ch = lead.channel || 'other'
+                        const cfg = CHANNEL_COLORS[ch] ?? CHANNEL_COLORS.other
+                        const lbl = CHANNEL_OPTIONS.find(o => o.value === ch)?.label ?? ch
+                        return (
+                          <span
+                            className="dash-badge"
+                            style={{ color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}` }}
+                          >
+                            {lbl}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td>
                       <div>{lead.site_layouts?.name ?? '—'}</div>
                       {lead.plots?.plot_number && (
@@ -399,7 +450,7 @@ export default function LeadPipeline() {
 
       {creatingLead && (
         <LeadEditModal
-          lead={{ name: '', phone: '', layout_id: '', lead_status: 'new', agent_id: '', notes: '' }}
+          lead={{ name: '', phone: '', layout_id: '', lead_status: 'new', agent_id: '', notes: '', channel: 'other' }}
           isNew
           layouts={layouts}
           agents={agents}

@@ -52,6 +52,18 @@ export default function VisitBookingModal({ layout, isOpen, onClose }) {
     setError(null)
 
     try {
+      // Create a lead for this visitor (public can insert into enquiries)
+      const leadResult = await runSupabaseMutation(
+        () => supabase.from('enquiries').insert({
+          name:        form.visitor_name.trim(),
+          phone:       form.visitor_phone.trim(),
+          layout_id:   layout.id,
+          lead_status: 'visit_scheduled',
+          channel:     'website',
+        }).select('id').single(),
+        { label: 'Create lead from visit booking' }
+      )
+
       await runSupabaseMutation(
         () => supabase.from('visit_schedules').insert({
           layout_id:     layout.id,
@@ -60,6 +72,7 @@ export default function VisitBookingModal({ layout, isOpen, onClose }) {
           scheduled_at:  form.scheduled_at,
           notes:         form.notes.trim() || null,
           status:        'pending',
+          enquiry_id:    leadResult.data?.id ?? null,
         }),
         { label: 'Book site visit' }
       )

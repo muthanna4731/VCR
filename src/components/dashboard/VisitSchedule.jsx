@@ -53,6 +53,39 @@ function NewVisitModal({ layouts, agents, onSave, onClose }) {
     setSaving(true)
     setError(null)
     try {
+      // Find or create the linked lead
+      const ADVANCED_STATUSES = ['visit_completed', 'converted', 'dropped']
+      let leadId = null
+
+      const existingRes = await supabase
+        .from('enquiries')
+        .select('id, lead_status')
+        .eq('phone', form.visitor_phone.trim())
+        .limit(1)
+
+      if (existingRes.data?.length > 0) {
+        const existing = existingRes.data[0]
+        leadId = existing.id
+        if (!ADVANCED_STATUSES.includes(existing.lead_status)) {
+          await runSupabaseMutation(
+            () => supabase.from('enquiries').update({ lead_status: 'visit_scheduled' }).eq('id', existing.id),
+            { label: 'Update lead status to visit_scheduled' }
+          )
+        }
+      } else {
+        const newLead = await runSupabaseMutation(
+          () => supabase.from('enquiries').insert({
+            name:        form.visitor_name.trim(),
+            phone:       form.visitor_phone.trim(),
+            layout_id:   form.layout_id || null,
+            lead_status: 'visit_scheduled',
+            channel:     'site_visit',
+          }).select('id').single(),
+          { label: 'Create lead from visit schedule' }
+        )
+        leadId = newLead.data?.id ?? null
+      }
+
       await runSupabaseMutation(
         () => supabase.from('visit_schedules').insert({
           layout_id:     form.layout_id,
@@ -62,6 +95,7 @@ function NewVisitModal({ layouts, agents, onSave, onClose }) {
           scheduled_at:  form.scheduled_at,
           notes:         form.notes.trim() || null,
           status:        'pending',
+          enquiry_id:    leadId,
         }),
         { label: 'Create visit schedule' }
       )
@@ -144,7 +178,7 @@ export default function VisitSchedule() {
         runSupabaseRequest(
           () => supabase
             .from('visit_schedules')
-            .select('id, visitor_name, visitor_phone, scheduled_at, status, notes, layout_id, agent_id, site_layouts(name), agents(name)')
+            .select('id, visitor_name, visitor_phone, scheduled_at, status, notes, layout_id, agent_id, enquiry_id, site_layouts(name), agents(name), enquiries(id, name, lead_status)')
             .order('scheduled_at', { ascending: false }),
           { label: 'Load visit schedules' }
         ),
@@ -281,6 +315,7 @@ export default function VisitSchedule() {
                 <th>Visitor</th>
                 <th>Phone</th>
                 <th>Layout</th>
+                <th>Lead</th>
                 <th>Agent</th>
                 <th>Status</th>
                 <th>Notes</th>
@@ -305,6 +340,18 @@ export default function VisitSchedule() {
                     <td className="dash-table-name">{visit.visitor_name}</td>
                     <td>{visit.visitor_phone}</td>
                     <td>{visit.site_layouts?.name ?? '—'}</td>
+                    <td>
+                      {visit.enquiries ? (
+                        <span style={{ fontSize: '1.3rem' }}>
+                          <div style={{ fontWeight: 500, color: '#151717' }}>{visit.enquiries.name}</div>
+                          <div className="dash-table-sub">
+                            {visit.enquiries.lead_status?.replace(/_/g, ' ')}
+                          </div>
+                        </span>
+                      ) : (
+                        <span style={{ color: '#aeaeb2', fontSize: '1.3rem' }}>No lead</span>
+                      )}
+                    </td>
                     <td>
                       <select
                         className="dash-filter-select dash-filter-select--inline"
