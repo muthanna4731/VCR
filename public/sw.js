@@ -58,7 +58,12 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Static assets (JS, CSS, images, fonts) — cache-first, network fallback
+  // Only cache same-origin static assets (JS, CSS, images, fonts)
+  if (url.origin !== self.location.origin) {
+    return
+  }
+
+  // Static assets — cache-first, network fallback
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached
@@ -73,7 +78,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
         }
         return response
-      })
+      }).catch(() => new Response(null, { status: 504, statusText: 'Gateway Timeout' }))
     })
   )
 })
