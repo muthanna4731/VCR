@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { AuthProvider } from './components/providers/AuthProvider'
 import RootLayout from './components/layout/RootLayout'
+import ScrollToTop from './components/layout/ScrollToTop'
 
 // Home page — loaded eagerly for first paint
 import HomePage from './pages/HomePage'
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Marketing site routes — wrapped in RootLayout (header + footer) */}
           <Route element={<RootLayout />}>

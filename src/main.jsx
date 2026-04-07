@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { preloadBootAssets } from './lib/bootAssets'
 
 // CSS imports — exact same order as original <link> tags in index.html
 import './css/fonts.css'
@@ -48,8 +49,18 @@ if (import.meta.env.DEV) {
     })
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
+async function bootstrapApp() {
+  try {
+    await preloadBootAssets({ timeoutMs: 3000 })
+  } catch (error) {
+    console.error('Failed to preload boot assets', error)
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  )
+}
+
+bootstrapApp()
