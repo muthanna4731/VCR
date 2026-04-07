@@ -55,7 +55,6 @@ export default function UpcomingProjectsSection() {
     <FeatureItem img={developmentImg} alt="VCR Devagiri Enclave" title="VCR Devagiri Enclave" text="Hunsur - 5 acres" />
   </div>
   <div className="features-row">
-    <FeatureItem img={developmentImg} alt="VCR RM Layout" title="VCR RM Layout" text="HD Kote - 6 acres" />
     <FeatureItem img={developmentImg} alt="VCR Nanjundeshwara Township" title="VCR Nanjundeshwara Township" text="Nanjungud - 23 acres" />
     <FeatureItem img={developmentImg} alt="VCR Bhoovaraha" title="VCR Bhoovaraha" text="KRS - 8 acres" />
   </div>

@@ -46,7 +46,12 @@ export default function PlotTable() {
   const [filterFacing, setFilterFacing] = useState('')
 
   const [selected, setSelected] = useState(new Set())
+  const lastClickedIdx = useRef(null)
   const [bulkStatus, setBulkStatus] = useState('')
+  const [bulkFacing, setBulkFacing] = useState('')
+  const [bulkDimensions, setBulkDimensions] = useState('')
+  const [bulkPricePerSqft, setBulkPricePerSqft] = useState('')
+  const [bulkRoadWidth, setBulkRoadWidth] = useState('')
   const [applyingBulk, setApplyingBulk] = useState(false)
   const [editingStatusId, setEditingStatusId] = useState(null)
 
@@ -212,13 +217,28 @@ export default function PlotTable() {
       return a.plotNumber.localeCompare(b.plotNumber, undefined, { numeric: true, sensitivity: 'base' })
     })
 
-  function toggleSelect(id) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  function toggleSelect(id, e) {
+    const idx = filtered.findIndex(p => p.id === id)
+
+    if (e?.shiftKey && lastClickedIdx.current !== null && lastClickedIdx.current !== idx) {
+      // Shift+click: select the range between last click and this click
+      const from = Math.min(lastClickedIdx.current, idx)
+      const to = Math.max(lastClickedIdx.current, idx)
+      setSelected(prev => {
+        const next = new Set(prev)
+        for (let i = from; i <= to; i++) next.add(filtered[i].id)
+        return next
+      })
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    }
+
+    lastClickedIdx.current = idx
   }
 
   function toggleSelectAll() {
@@ -229,23 +249,66 @@ export default function PlotTable() {
     }
   }
 
-  async function applyBulkStatus() {
-    if (!bulkStatus || selected.size === 0) return
+  async function applyBulkUpdate() {
+    if (selected.size === 0) return
+
+    // Build the update payload from non-empty fields
+    const updatePayload = {}
+    const localUpdates = {}
+
+    if (bulkStatus) {
+      updatePayload.status = bulkStatus
+      localUpdates.status = bulkStatus
+    }
+    if (bulkFacing) {
+      updatePayload.facing = bulkFacing
+      localUpdates.facing = bulkFacing
+    }
+    if (bulkDimensions.trim()) {
+      updatePayload.dimensions = bulkDimensions.trim()
+      localUpdates.dimensions = bulkDimensions.trim()
+    }
+    if (bulkPricePerSqft) {
+      const pps = parseInt(bulkPricePerSqft, 10) || 0
+      updatePayload.price_per_sqft = pps
+      localUpdates.pricePerSqft = pps
+    }
+    if (bulkRoadWidth.trim()) {
+      updatePayload.road_width = bulkRoadWidth.trim()
+      localUpdates.roadWidth = bulkRoadWidth.trim()
+    }
+
+    if (Object.keys(updatePayload).length === 0) return
+
     setApplyingBulk(true)
     const ids = [...selected]
+
     try {
       await runSupabaseMutation(
         () => supabase
           .from('plots')
-          .update({ status: bulkStatus })
+          .update(updatePayload)
           .in('id', ids),
-        { label: 'Apply bulk plot status' }
+        { label: 'Apply bulk plot update' }
       )
+
+      // Recalculate total price if price_per_sqft changed
       setPlots(prev =>
-        prev.map(p => selected.has(p.id) ? { ...p, status: bulkStatus } : p)
+        prev.map(p => {
+          if (!selected.has(p.id)) return p
+          const updated = { ...p, ...localUpdates }
+          if (localUpdates.pricePerSqft !== undefined) {
+            updated.totalPrice = updated.dimensionSqft * updated.pricePerSqft
+          }
+          return updated
+        })
       )
       setSelected(new Set())
       setBulkStatus('')
+      setBulkFacing('')
+      setBulkDimensions('')
+      setBulkPricePerSqft('')
+      setBulkRoadWidth('')
     } catch (err) {
       setError(err.message)
     }
@@ -370,22 +433,57 @@ export default function PlotTable() {
       </div>
 
       {selected.size > 0 && (
-        <div className="dash-bulk-bar">
+        <div className="dash-bulk-bar" style={{ flexWrap: 'wrap' }}>
           <span className="dash-bulk-count">{selected.size} selected</span>
           <select
             className="dash-filter-select"
             value={bulkStatus}
             onChange={e => setBulkStatus(e.target.value)}
           >
-            <option value="">Change status to…</option>
+            <option value="">Status…</option>
             {STATUSES.map(s => (
               <option key={s} value={s}>{STATUS_LABELS[s]}</option>
             ))}
           </select>
+          <select
+            className="dash-filter-select"
+            value={bulkFacing}
+            onChange={e => setBulkFacing(e.target.value)}
+          >
+            <option value="">Facing…</option>
+            {FACINGS.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            className="dash-filter-select"
+            value={bulkDimensions}
+            onChange={e => setBulkDimensions(e.target.value)}
+            placeholder="Dimensions…"
+            style={{ width: '12rem' }}
+          />
+          <input
+            type="number"
+            className="dash-filter-select"
+            value={bulkPricePerSqft}
+            onChange={e => setBulkPricePerSqft(e.target.value)}
+            placeholder="Price/sqft…"
+            min="0"
+            style={{ width: '12rem' }}
+          />
+          <input
+            type="text"
+            className="dash-filter-select"
+            value={bulkRoadWidth}
+            onChange={e => setBulkRoadWidth(e.target.value)}
+            placeholder="Road width…"
+            style={{ width: '12rem' }}
+          />
           <button
             className="dash-btn dash-btn--primary dash-btn--sm"
-            onClick={applyBulkStatus}
-            disabled={!bulkStatus || applyingBulk}
+            onClick={applyBulkUpdate}
+            disabled={(!bulkStatus && !bulkFacing && !bulkDimensions.trim() && !bulkPricePerSqft && !bulkRoadWidth.trim()) || applyingBulk}
           >
             {applyingBulk ? 'Applying…' : 'Apply'}
           </button>
@@ -432,7 +530,7 @@ export default function PlotTable() {
                     <input
                       type="checkbox"
                       checked={selected.has(plot.id)}
-                      onChange={() => toggleSelect(plot.id)}
+                      onChange={e => toggleSelect(plot.id, e.nativeEvent)}
                       aria-label={`Select ${plot.plotNumber}`}
                     />
                   </td>

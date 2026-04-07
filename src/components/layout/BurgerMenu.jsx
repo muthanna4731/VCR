@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { gsap } from 'gsap'
+import { createPortal } from 'react-dom'
 
 export default function BurgerMenu({ isHome, isContact, isOpen, onClose }) {
   const menuRef = useRef(null)
@@ -45,7 +46,7 @@ export default function BurgerMenu({ isHome, isContact, isOpen, onClose }) {
     })
   }, [isOpen])
 
-  return (
+  const menuContent = (
     <div
       ref={menuRef}
       className={`burger-menu-wrapper${isOpen ? ' burger-menu-wrapper--open' : ''}`}
@@ -90,4 +91,8 @@ export default function BurgerMenu({ isHome, isContact, isOpen, onClose }) {
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(menuContent, document.body)
 }

@@ -118,6 +118,13 @@ export default function OverlayEditor() {
   const [batchAssignments, setBatchAssignments] = useState({})
   const [saving, setSaving] = useState(false)
 
+  /* Plot detail forms for new plot creation during assignment */
+  const [plotForms, setPlotForms] = useState({})
+  // Each entry: { plotNumber, dimensions, dimensionSqft, facing, status, pricePerSqft, cornerPlot, roadWidth }
+
+  const FACINGS = ['North', 'East', 'South', 'West']
+  const STATUSES_LIST = ['available', 'negotiation', 'booked', 'sold', 'blocked']
+
   /* Selected overlay (info panel) */
   const [selectedOverlayId, setSelectedOverlayId] = useState(null)
 
@@ -489,6 +496,7 @@ export default function OverlayEditor() {
     setDrawMode(false)
     setMousePos(null)
     setIsSnapping(false)
+    setPlotForms({})
   }
 
   function finishPolygon() {
@@ -513,10 +521,37 @@ export default function OverlayEditor() {
       })
       return next
     })
+    setPlotForms(prev => {
+      const next = {}
+      Object.entries(prev).forEach(([k, v]) => {
+        const ki = parseInt(k)
+        if (ki < idx) next[ki] = v
+        else if (ki > idx) next[ki - 1] = v
+      })
+      return next
+    })
+  }
+
+  function makeEmptyPlotForm() {
+    return {
+      mode: 'new',          // 'new' or 'existing'
+      existingPlotId: '',
+      plotNumber: '',
+      dimensions: '',
+      dimensionSqft: '',
+      facing: 'North',
+      status: 'available',
+      pricePerSqft: '',
+      cornerPlot: false,
+      roadWidth: '',
+    }
   }
 
   function openBatchAssign() {
     setBatchAssignments({})
+    const forms = {}
+    pendingPolygons.forEach((_, idx) => { forms[idx] = makeEmptyPlotForm() })
+    setPlotForms(forms)
     setAssigning(true)
   }
 
@@ -578,31 +613,71 @@ export default function OverlayEditor() {
   /* ─── Save batch overlays ─── */
 
   async function handleSaveBatch() {
-    const entries = Object.entries(batchAssignments).filter(([, plotId]) => plotId)
-    if (entries.length === 0) return
+    // Collect valid entries — either new plots with details or existing plot assignments
+    const validEntries = Object.entries(plotForms).filter(([, form]) => {
+      if (form.mode === 'existing') return !!form.existingPlotId
+      return form.plotNumber.trim() !== ''
+    })
+    if (validEntries.length === 0) return
 
     setSaving(true)
     setError(null)
 
-    const rows = entries.map(([idx, plotId]) => {
-      const coords = pendingPolygons[parseInt(idx)]
-      const label = centroid(coords)
-      return {
-        plot_id: plotId,
-        layout_id: layoutId,
-        overlay_type: 'polygon',
-        coordinates: coords,
-        label_position: { x: label.x, y: label.y },
-      }
-    })
-
     try {
-      await runSupabaseMutation(
-        () => supabase
-          .from('plot_overlays')
-          .upsert(rows, { onConflict: 'plot_id' }),
-        { label: 'Save overlay batch' }
-      )
+      const overlayRows = []
+
+      for (const [idxStr, form] of validEntries) {
+        const idx = parseInt(idxStr)
+        const coords = pendingPolygons[idx]
+        const label = centroid(coords)
+        let plotId
+
+        if (form.mode === 'existing') {
+          plotId = form.existingPlotId
+        } else {
+          // Create a new plot in the database
+          const sqft = parseInt(form.dimensionSqft, 10) || 0
+          const pps = parseInt(form.pricePerSqft, 10) || 0
+          const { data: newPlot } = await runSupabaseMutation(
+            () => supabase
+              .from('plots')
+              .insert({
+                layout_id: layoutId,
+                plot_number: form.plotNumber.trim(),
+                dimensions: form.dimensions.trim() || null,
+                dimension_sqft: sqft,
+                facing: form.facing,
+                status: form.status,
+                price_per_sqft: pps,
+                total_price: sqft * pps,
+                corner_plot: form.cornerPlot,
+                road_width: form.roadWidth.trim() || null,
+                amenities: [],
+              })
+              .select('id')
+              .single(),
+            { label: `Create plot ${form.plotNumber}` }
+          )
+          plotId = newPlot.id
+        }
+
+        overlayRows.push({
+          plot_id: plotId,
+          layout_id: layoutId,
+          overlay_type: 'polygon',
+          coordinates: coords,
+          label_position: { x: label.x, y: label.y },
+        })
+      }
+
+      if (overlayRows.length > 0) {
+        await runSupabaseMutation(
+          () => supabase
+            .from('plot_overlays')
+            .upsert(overlayRows, { onConflict: 'plot_id' }),
+          { label: 'Save overlay batch' }
+        )
+      }
     } catch (err) {
       setError(err.message)
       setSaving(false)
@@ -617,6 +692,7 @@ export default function OverlayEditor() {
     setIsSnapping(false)
     setAssigning(false)
     setBatchAssignments({})
+    setPlotForms({})
     setSaving(false)
   }
 
@@ -773,8 +849,10 @@ export default function OverlayEditor() {
 
   const isEditing = editingOverlayId !== null
 
-  const assignedInBatch = new Set(Object.values(batchAssignments).filter(Boolean))
-  const batchAssignedCount = assignedInBatch.size
+  const batchAssignedCount = Object.values(plotForms).filter(f => {
+    if (f.mode === 'existing') return !!f.existingPlotId
+    return f.plotNumber.trim() !== ''
+  }).length
 
   /* ─── Render ─── */
 
@@ -1556,76 +1634,193 @@ export default function OverlayEditor() {
       {/* Batch assignment modal */}
       {assigning && pendingPolygons.length > 0 && (
         <div className="dash-modal-overlay" onClick={e => e.target === e.currentTarget && setAssigning(false)}>
-          <div className="dash-modal dash-modal--sm">
+          <div className="dash-modal" style={{ maxWidth: '64rem' }}>
             <div className="dash-modal-header">
               <h2 className="dash-modal-title">
-                Assign {pendingPolygons.length} Polygon{pendingPolygons.length !== 1 ? 's' : ''} to Plots
+                {pendingPolygons.length === 1 ? 'Plot Details' : `${pendingPolygons.length} Plots — Fill Details`}
               </h2>
               <button className="dash-modal-close" onClick={() => setAssigning(false)} aria-label="Close">✕</button>
             </div>
 
-            <div className="dash-form" style={{ maxHeight: '50rem', overflowY: 'auto' }}>
+            <div className="dash-form" style={{ maxHeight: '60vh', overflowY: 'auto', padding: '1.6rem' }}>
               {pendingPolygons.map((_, idx) => {
                 const color = PENDING_COLORS[idx % PENDING_COLORS.length]
+                const form = plotForms[idx] ?? makeEmptyPlotForm()
+                const updateForm = (field, value) => {
+                  setPlotForms(prev => ({
+                    ...prev,
+                    [idx]: { ...prev[idx], [field]: value },
+                  }))
+                }
+
                 const usedPlotIds = new Set(
-                  Object.entries(batchAssignments)
-                    .filter(([k, v]) => v && parseInt(k) !== idx)
-                    .map(([, v]) => v)
+                  Object.entries(plotForms)
+                    .filter(([k, f]) => f.mode === 'existing' && f.existingPlotId && parseInt(k) !== idx)
+                    .map(([, f]) => f.existingPlotId)
                 )
+
                 return (
-                  <div key={idx} className="dash-form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '2.6rem',
-                        height: '2.6rem',
-                        borderRadius: '50%',
-                        backgroundColor: color,
-                        color: '#fff',
-                        fontSize: '1.2rem',
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {idx + 1}
-                    </span>
-                    <div style={{ flex: 1 }}>
+                  <div
+                    key={idx}
+                    style={{
+                      border: `2px solid ${color}33`,
+                      borderRadius: '0.8rem',
+                      padding: '1.4rem',
+                      marginBottom: '1.2rem',
+                      backgroundColor: `${color}08`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '2.4rem', height: '2.4rem', borderRadius: '50%',
+                            backgroundColor: color, color: '#fff', fontSize: '1.1rem', fontWeight: 700,
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <select
+                          className="dash-form-select"
+                          value={form.mode}
+                          onChange={e => updateForm('mode', e.target.value)}
+                          style={{ width: 'auto', fontSize: '1.2rem' }}
+                        >
+                          <option value="new">Create New Plot</option>
+                          <option value="existing">Assign to Existing</option>
+                        </select>
+                      </div>
+                      <button
+                        className="dash-btn dash-btn--ghost dash-btn--sm"
+                        onClick={() => removePendingPolygon(idx)}
+                        title="Remove polygon"
+                        style={{ padding: '0.2rem 0.6rem' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {form.mode === 'existing' ? (
                       <select
                         className="dash-form-select"
-                        value={batchAssignments[idx] ?? ''}
-                        onChange={e => setBatchAssignments(prev => ({ ...prev, [idx]: e.target.value }))}
+                        value={form.existingPlotId}
+                        onChange={e => updateForm('existingPlotId', e.target.value)}
                       >
                         <option value="">Choose a plot...</option>
                         {unassignedPlots
-                          .filter(p => !usedPlotIds.has(p.id) || batchAssignments[idx] === p.id)
+                          .filter(p => !usedPlotIds.has(p.id) || form.existingPlotId === p.id)
                           .map(p => (
                             <option key={p.id} value={p.id}>{p.plot_number}</option>
                           ))
                         }
                         {plots
-                          .filter(p => overlaidPlotIds.has(p.id) && (!usedPlotIds.has(p.id) || batchAssignments[idx] === p.id))
+                          .filter(p => overlaidPlotIds.has(p.id) && (!usedPlotIds.has(p.id) || form.existingPlotId === p.id))
                           .map(p => (
-                            <option key={p.id} value={p.id}>{p.plot_number} (replace)</option>
+                            <option key={p.id} value={p.id}>{p.plot_number} (replace overlay)</option>
                           ))
                         }
                       </select>
-                    </div>
-                    <button
-                      className="dash-btn dash-btn--ghost dash-btn--sm"
-                      onClick={() => removePendingPolygon(idx)}
-                      title="Remove polygon"
-                      style={{ padding: '0.2rem 0.6rem' }}
-                    >
-                      ✕
-                    </button>
+                    ) : (
+                      <>
+                        <div className="dash-form-row">
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Plot Number *</label>
+                            <input
+                              type="text"
+                              className="dash-form-input"
+                              value={form.plotNumber}
+                              onChange={e => updateForm('plotNumber', e.target.value)}
+                              placeholder="e.g. A-1"
+                            />
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Facing</label>
+                            <select
+                              className="dash-form-select"
+                              value={form.facing}
+                              onChange={e => updateForm('facing', e.target.value)}
+                            >
+                              {FACINGS.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="dash-form-row">
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Dimensions</label>
+                            <input
+                              type="text"
+                              className="dash-form-input"
+                              value={form.dimensions}
+                              onChange={e => updateForm('dimensions', e.target.value)}
+                              placeholder="40x60"
+                            />
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Area (sqft)</label>
+                            <input
+                              type="number"
+                              className="dash-form-input"
+                              value={form.dimensionSqft}
+                              onChange={e => updateForm('dimensionSqft', e.target.value)}
+                              min="0"
+                              placeholder="2400"
+                            />
+                          </div>
+                        </div>
+                        <div className="dash-form-row">
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Status</label>
+                            <select
+                              className="dash-form-select"
+                              value={form.status}
+                              onChange={e => updateForm('status', e.target.value)}
+                            >
+                              {STATUSES_LIST.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                            </select>
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Price/sqft (₹)</label>
+                            <input
+                              type="number"
+                              className="dash-form-input"
+                              value={form.pricePerSqft}
+                              onChange={e => updateForm('pricePerSqft', e.target.value)}
+                              min="0"
+                              placeholder="2500"
+                            />
+                          </div>
+                        </div>
+                        <div className="dash-form-row">
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Road Width</label>
+                            <input
+                              type="text"
+                              className="dash-form-input"
+                              value={form.roadWidth}
+                              onChange={e => updateForm('roadWidth', e.target.value)}
+                              placeholder="30ft"
+                            />
+                          </div>
+                          <div className="dash-form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.2rem' }}>
+                            <label className="dash-form-check" style={{ gap: '0.6rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={form.cornerPlot}
+                                onChange={e => updateForm('cornerPlot', e.target.checked)}
+                              />
+                              Corner Plot
+                            </label>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )
               })}
 
               <p className="dash-form-hint" style={{ marginTop: '0.5rem' }}>
-                {batchAssignedCount} of {pendingPolygons.length} assigned. Unassigned polygons will be discarded.
+                {batchAssignedCount} of {pendingPolygons.length} ready. Incomplete entries will be discarded.
               </p>
 
               <div className="dash-form-actions">
@@ -1641,7 +1836,7 @@ export default function OverlayEditor() {
                   onClick={handleSaveBatch}
                   disabled={batchAssignedCount === 0 || saving}
                 >
-                  {saving ? 'Saving...' : `Save ${batchAssignedCount} Overlay${batchAssignedCount !== 1 ? 's' : ''}`}
+                  {saving ? 'Saving...' : `Save ${batchAssignedCount} Plot${batchAssignedCount !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </div>

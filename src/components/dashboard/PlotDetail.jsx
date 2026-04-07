@@ -37,25 +37,45 @@ export default function PlotDetail() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [buyerName, setBuyerName] = useState('')
+  const [buyerPhone, setBuyerPhone] = useState('')
+  const [originalBuyerName, setOriginalBuyerName] = useState('')
+  const [originalBuyerPhone, setOriginalBuyerPhone] = useState('')
+  const [existingPlanId, setExistingPlanId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
       try {
-        const { data } = await runSupabaseRequest(
-          () => supabase
-            .from('plots')
-            .select('id, layout_id, plot_number, dimensions, dimension_sqft, facing, status, price_per_sqft, total_price, corner_plot, road_width, amenities, site_layouts(name, cities(name))')
-            .eq('id', id)
-            .single(),
-          { label: 'Load plot detail' }
-        )
+        const [{ data }, { data: planData }] = await Promise.all([
+          runSupabaseRequest(
+            () => supabase
+              .from('plots')
+              .select('id, layout_id, plot_number, dimensions, dimension_sqft, facing, status, price_per_sqft, total_price, corner_plot, road_width, amenities, site_layouts(name, cities(name))')
+              .eq('id', id)
+              .single(),
+            { label: 'Load plot detail' }
+          ),
+          runSupabaseRequest(
+            () => supabase
+              .from('payment_plans')
+              .select('id, buyer_name, buyer_phone')
+              .eq('plot_id', id)
+              .maybeSingle(),
+            { label: 'Load plot buyer info' }
+          ),
+        ])
 
         if (cancelled) return
         const mapped = mapPlot(data)
         setForm(mapped)
         setOriginal(mapped)
+        setBuyerName(planData?.buyer_name ?? '')
+        setBuyerPhone(planData?.buyer_phone ?? '')
+        setOriginalBuyerName(planData?.buyer_name ?? '')
+        setOriginalBuyerPhone(planData?.buyer_phone ?? '')
+        setExistingPlanId(planData?.id ?? null)
       } catch (err) {
         if (cancelled) return
         setError(err.message)
@@ -80,7 +100,8 @@ export default function PlotDetail() {
     setSaved(false)
   }
 
-  const isDirty = form && original && JSON.stringify(form) !== JSON.stringify(original)
+  const isBuyerDirty = buyerName !== originalBuyerName || buyerPhone !== originalBuyerPhone
+  const isDirty = (form && original && JSON.stringify(form) !== JSON.stringify(original)) || isBuyerDirty
 
   function toggleAmenity(key) {
     setForm(f => {
@@ -116,6 +137,44 @@ export default function PlotDetail() {
           .eq('id', id),
         { label: 'Save plot detail' }
       )
+
+      // Save buyer info to payment_plans
+      if (isBuyerDirty) {
+        const buyerPayload = {
+          buyer_name: buyerName.trim() || null,
+          buyer_phone: buyerPhone.trim() || null,
+        }
+
+        if (existingPlanId) {
+          // Update existing plan
+          await runSupabaseMutation(
+            () => supabase
+              .from('payment_plans')
+              .update(buyerPayload)
+              .eq('id', existingPlanId),
+            { label: 'Update buyer info' }
+          )
+        } else if (buyerName.trim()) {
+          // Create new plan with buyer info
+          const { data: newPlan } = await runSupabaseMutation(
+            () => supabase
+              .from('payment_plans')
+              .insert({
+                plot_id: id,
+                ...buyerPayload,
+                total_amount: parseInt(form.totalPrice, 10) || 0,
+              })
+              .select('id')
+              .single(),
+            { label: 'Create payment plan with buyer' }
+          )
+          setExistingPlanId(newPlan.id)
+        }
+
+        setOriginalBuyerName(buyerName)
+        setOriginalBuyerPhone(buyerPhone)
+      }
+
       setOriginal(form)
       setSaved(true)
     } catch (err) {
@@ -275,6 +334,33 @@ export default function PlotDetail() {
               onChange={e => set('cornerPlot', e.target.checked)}
             />
             <label htmlFor="pd-corner">Corner Plot</label>
+          </div>
+
+          <h2 className="dash-section-title" style={{ marginTop: '2.4rem' }}>Buyer Information</h2>
+
+          <div className="dash-form-row">
+            <div className="dash-form-group">
+              <label className="dash-form-label" htmlFor="pd-buyer-name">Buyer Name</label>
+              <input
+                id="pd-buyer-name"
+                type="text"
+                className="dash-form-input"
+                value={buyerName}
+                onChange={e => { setBuyerName(e.target.value); setSaved(false) }}
+                placeholder="Buyer's full name"
+              />
+            </div>
+            <div className="dash-form-group">
+              <label className="dash-form-label" htmlFor="pd-buyer-phone">Buyer Phone</label>
+              <input
+                id="pd-buyer-phone"
+                type="text"
+                className="dash-form-input"
+                value={buyerPhone}
+                onChange={e => { setBuyerPhone(e.target.value); setSaved(false) }}
+                placeholder="+91 98765 43210"
+              />
+            </div>
           </div>
 
           <div className="dash-form-group">

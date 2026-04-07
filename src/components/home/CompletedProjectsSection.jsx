@@ -44,9 +44,8 @@ export default function CompletedProjectsSection() {
             </div>
             <div className="services-item-num"></div>
             <div className="services-item-text">
-              <h3>Sell fast, sell high. Your listing gets pro staging, strategic pricing, constant open houses, and agents who never stop working until the right buyer signs.</h3>
             </div>
-            <div className="services-item-more"><span>Hunsur Icon City</span><ServiceArrowSvg /></div>
+            <div className="services-item-more"><span>Devagiri Enclave</span><ServiceArrowSvg /></div>
           </div>
         </button>
         <button className="services-item" type="button" aria-haspopup="dialog" aria-expanded="false" data-state="closed">
@@ -60,7 +59,7 @@ export default function CompletedProjectsSection() {
             <div className="services-item-text">
               <h3>An experience.</h3>
             </div>
-            <div className="services-item-more"><span>Hosa City</span><ServiceArrowSvg /></div>
+            <div className="services-item-more"><span>RM Layout</span><ServiceArrowSvg /></div>
           </div>
         </button>
       </div>

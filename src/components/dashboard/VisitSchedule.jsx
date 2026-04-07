@@ -267,6 +267,11 @@ export default function VisitSchedule() {
   const [filters, setFilters] = useState({ status: '', layout: '', agent: '' })
   const [showModal, setShowModal] = useState(false)
   const [updating, setUpdating] = useState(null) // visit id being updated
+  const [menuOpenId, setMenuOpenId] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  const [editingVisit, setEditingVisit] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -309,6 +314,64 @@ export default function VisitSchedule() {
       setError(err.message)
     } finally {
       setUpdating(null)
+    }
+  }
+
+  function openEditVisit(visit) {
+    setMenuOpenId(null)
+    setEditForm({
+      visitor_name: visit.visitor_name ?? '',
+      visitor_phone: visit.visitor_phone ?? '',
+      layout_id: visit.layout_id ?? '',
+      agent_id: visit.agent_id ?? '',
+      scheduled_at: visit.scheduled_at ? visit.scheduled_at.slice(0, 16) : '',
+      notes: visit.notes ?? '',
+      status: visit.status ?? 'pending',
+    })
+    setEditingVisit(visit)
+  }
+
+  async function saveEditVisit(e) {
+    e.preventDefault()
+    if (!editingVisit || !editForm) return
+    setEditSaving(true)
+    try {
+      await runSupabaseMutation(
+        () => supabase
+          .from('visit_schedules')
+          .update({
+            visitor_name: editForm.visitor_name.trim(),
+            visitor_phone: editForm.visitor_phone.trim(),
+            layout_id: editForm.layout_id || null,
+            agent_id: editForm.agent_id || null,
+            scheduled_at: editForm.scheduled_at,
+            notes: editForm.notes.trim() || null,
+            status: editForm.status,
+          })
+          .eq('id', editingVisit.id),
+        { label: 'Update visit schedule' }
+      )
+      await load()
+      setEditingVisit(null)
+      setEditForm(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  async function deleteVisit(id) {
+    setDeleteConfirmId(null)
+    setMenuOpenId(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('visit_schedules').delete().eq('id', id),
+        { label: 'Delete visit' }
+      )
+      setVisits(prev => prev.filter(v => v.id !== id))
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -485,6 +548,52 @@ export default function VisitSchedule() {
                             {ACTION_LABELS[action]}
                           </button>
                         ))}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            className="dash-btn dash-btn--sm dash-btn--ghost"
+                            onClick={() => setMenuOpenId(menuOpenId === visit.id ? null : visit.id)}
+                            aria-label="More actions"
+                            style={{ padding: '0.2rem 0.6rem', fontSize: '1.6rem', lineHeight: 1 }}
+                          >
+                            ⋮
+                          </button>
+                          {menuOpenId === visit.id && (
+                            <>
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => { setMenuOpenId(null); setDeleteConfirmId(null) }} />
+                              <div style={{
+                                position: 'absolute', right: 0, top: '100%', zIndex: 10,
+                                background: '#fff', borderRadius: '0.6rem', boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
+                                border: '1px solid #e5e5ea', minWidth: '14rem', padding: '0.4rem 0', marginTop: '0.2rem',
+                              }}>
+                                <button
+                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.7rem 1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: '#1c1c1e' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f2f2f7'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    onClick={() => openEditVisit(visit)}
+                                  >
+                                    Edit
+                                  </button>
+                                <div style={{ height: '1px', background: '#e5e5ea', margin: '0.2rem 0' }} />
+                                {deleteConfirmId === visit.id ? (
+                                  <div style={{ padding: '0.7rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    <span style={{ fontSize: '1.3rem', color: '#ff3b30', fontWeight: 600 }}>Delete?</span>
+                                    <button className="dash-btn dash-btn--sm dash-btn--danger" onClick={() => deleteVisit(visit.id)}>Yes</button>
+                                    <button className="dash-btn dash-btn--sm" onClick={() => setDeleteConfirmId(null)}>No</button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.7rem 1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: '#ff3b30' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f2f2f7'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    onClick={() => setDeleteConfirmId(visit.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -503,6 +612,76 @@ export default function VisitSchedule() {
           onSave={() => { setShowModal(false); load() }}
           onClose={() => setShowModal(false)}
         />
+      )}
+
+      {editingVisit && editForm && (
+        <div className="dash-modal-overlay" role="dialog" aria-modal="true" onClick={e => e.target === e.currentTarget && setEditingVisit(null)}>
+          <div className="dash-modal">
+            <div className="dash-modal-header">
+              <h2 className="dash-modal-title">Edit Visit</h2>
+              <button className="dash-modal-close" onClick={() => setEditingVisit(null)} aria-label="Close">✕</button>
+            </div>
+            <form className="dash-form" onSubmit={saveEditVisit}>
+              <div className="dash-form-row">
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Visitor Name *</label>
+                  <input className="dash-form-input" value={editForm.visitor_name}
+                    onChange={e => setEditForm(f => ({ ...f, visitor_name: e.target.value }))} required />
+                </div>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Phone</label>
+                  <input className="dash-form-input" value={editForm.visitor_phone}
+                    onChange={e => setEditForm(f => ({ ...f, visitor_phone: e.target.value }))} />
+                </div>
+              </div>
+              <div className="dash-form-row">
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Layout</label>
+                  <select className="dash-form-select" value={editForm.layout_id}
+                    onChange={e => setEditForm(f => ({ ...f, layout_id: e.target.value }))}>
+                    <option value="">Select layout…</option>
+                    {layouts.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Agent</label>
+                  <select className="dash-form-select" value={editForm.agent_id}
+                    onChange={e => setEditForm(f => ({ ...f, agent_id: e.target.value }))}>
+                    <option value="">Unassigned</option>
+                    {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="dash-form-row">
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Date & Time *</label>
+                  <input className="dash-form-input" type="datetime-local" value={editForm.scheduled_at}
+                    onChange={e => setEditForm(f => ({ ...f, scheduled_at: e.target.value }))} required />
+                </div>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Status</label>
+                  <select className="dash-form-select" value={editForm.status}
+                    onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                    {VISIT_STATUSES.map(s => (
+                      <option key={s} value={s}>{VISIT_STATUS_CONFIG[s].label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="dash-form-group">
+                <label className="dash-form-label">Notes</label>
+                <textarea className="dash-form-textarea" value={editForm.notes}
+                  onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
+              </div>
+              <div className="dash-form-actions">
+                <button type="button" className="dash-btn" onClick={() => setEditingVisit(null)}>Cancel</button>
+                <button type="submit" className="dash-btn dash-btn--primary" disabled={editSaving}>
+                  {editSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
