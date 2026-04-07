@@ -1,57 +1,58 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { gsap } from 'gsap'
-import { useGSAP } from '@gsap/react'
 
-export default function BurgerMenu({ isHome, isContact }) {
+export default function BurgerMenu({ isHome, isContact, isOpen, onClose }) {
   const menuRef = useRef(null)
-  const [, setIsOpen] = useState(false)
-
-  // Attach click listener to the burger button (sibling in parent)
-  useGSAP(() => {
-    const header = menuRef.current?.closest('header')
-    const burger = header?.querySelector('.burger-btn-btn')
-    if (!burger || !menuRef.current) return
-
-    const menu = menuRef.current
-    menu.style.display = 'none'
-
-    const handleClick = () => {
-      const open = burger.getAttribute('aria-expanded') === 'true'
-      burger.setAttribute('aria-expanded', !open)
-      if (!open) {
-        menu.style.display = 'flex'
-        menu.style.pointerEvents = 'auto'
-        gsap.fromTo(menu, { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.3 })
-        setIsOpen(true)
-      } else {
-        menu.style.pointerEvents = 'none'
-        gsap.to(menu, {
-          opacity: 0,
-          y: -20,
-          duration: 0.3,
-          onComplete: () => { menu.style.display = 'none' }
-        })
-        setIsOpen(false)
-      }
-    }
-
-    burger.addEventListener('click', handleClick)
-    return () => burger.removeEventListener('click', handleClick)
-  }, { scope: menuRef })
+  const hasMountedRef = useRef(false)
 
   const handleLinkClick = (e) => {
     if (e.target.closest('a') || e.target.closest('button')) {
-      const header = menuRef.current?.closest('header')
-      const burger = header?.querySelector('.burger-btn-btn')
-      if (burger && burger.getAttribute('aria-expanded') === 'true') {
-        burger.click()
-      }
+      onClose()
     }
   }
 
+  useEffect(() => {
+    const menu = menuRef.current
+    if (!menu) return
+
+    if (!hasMountedRef.current) {
+      gsap.set(menu, { opacity: 0, y: -20, pointerEvents: 'none', display: 'none' })
+      hasMountedRef.current = true
+    }
+
+    if (isOpen) {
+      gsap.killTweensOf(menu)
+      menu.style.display = 'flex'
+      gsap.to(menu, {
+        opacity: 1,
+        y: 0,
+        duration: 0.3,
+        pointerEvents: 'auto',
+      })
+      return
+    }
+
+    gsap.killTweensOf(menu)
+    gsap.to(menu, {
+      opacity: 0,
+      y: -20,
+      duration: 0.25,
+      pointerEvents: 'none',
+      onComplete: () => {
+        if (!isOpen) menu.style.display = 'none'
+      },
+    })
+  }, [isOpen])
+
   return (
-    <div ref={menuRef} className="burger-menu-wrapper" style={{ paddingTop: 0 }} data-lenis-prevent="true" onClick={handleLinkClick}>
+    <div
+      ref={menuRef}
+      className={`burger-menu-wrapper${isOpen ? ' burger-menu-wrapper--open' : ''}`}
+      style={{ paddingTop: 0 }}
+      data-lenis-prevent="true"
+      onClick={handleLinkClick}
+    >
       <div className="burger-menu-backdrop"></div>
       <div className="burger-menu-content">
         <nav className="burger-menu-nav">

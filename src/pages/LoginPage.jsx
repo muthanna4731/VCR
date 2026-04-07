@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
+import '../css/dashboard.css'
 
 function isStaffRole(role) {
   return ['admin', 'owner', 'manager'].includes(role)

@@ -1,12 +1,14 @@
-import { forwardRef } from 'react'
+import { forwardRef, useState } from 'react'
 import { Link } from 'react-router'
 import BurgerMenu from './BurgerMenu'
 import vcrLogo from '../../images/VCR Logo-optimized.webp'
 
 const Header = forwardRef(function Header({ isHome, isContact }, ref) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const showBrowse = isHome || isContact
+
   return (
-    <header ref={ref} className="header-wrapper header-transparent">
+    <header ref={ref} className={`header-wrapper header-transparent${isMenuOpen ? ' header--opened' : ''}`}>
       <div className="container-container">
         <div className="header-content">
           <div className="header-logo">
@@ -32,11 +34,24 @@ const Header = forwardRef(function Header({ isHome, isContact }, ref) {
               </Link>
             )}
           </div>
-          <button className="burger-btn-btn header-burger-control" aria-label="Menu control"
-            aria-expanded="false"><span></span><span></span></button>
+          <button
+            className={`burger-btn-btn header-burger-control${isMenuOpen ? ' burger-btn--active' : ''}`}
+            aria-label="Menu control"
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen(open => !open)}
+            type="button"
+          >
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </div>
-      <BurgerMenu isHome={isHome} isContact={isContact} />
+      <BurgerMenu
+        isHome={isHome}
+        isContact={isContact}
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+      />
     </header>
   )
 })

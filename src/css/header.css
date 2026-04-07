@@ -138,6 +138,10 @@
     background-color: rgba(0, 0, 0, 0)
 }
 
+.header-wrapper.header--opened {
+    background-color: #fff;
+}
+
 .header-wrapper.header--hidden {
     transform: translateY(-100%)
 }
@@ -588,11 +592,16 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 49;
+    z-index: 60;
     display: flex;
     flex-direction: column;
     opacity: 0;
-    pointer-events: none
+    pointer-events: none;
+    overflow-y: auto
+}
+
+.burger-menu-wrapper--open {
+    pointer-events: auto;
 }
 
 .burger-menu-backdrop {
@@ -608,21 +617,17 @@
 .burger-menu-content {
     position: relative;
     width: 100%;
-    overflow-y: auto;
-    flex: 1 1
+    flex: 1 0 auto;
+    z-index: 1
 }
 
 .burger-menu-nav {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     display: flex;
     flex-direction: column;
     gap: 1.6rem;
     padding: 10rem 3rem 3rem;
-    overflow: auto
+    position: relative;
+    min-height: max-content
 }
 
 .burger-menu-nav-item {
@@ -668,7 +673,10 @@
 .burger-menu-actions {
     display: flex;
     flex-direction: column;
-    padding: 3rem 4rem
+    padding: 3rem 4rem;
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto
 }
 
 @keyframes burger-menu-slideDown {
