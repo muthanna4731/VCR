@@ -563,7 +563,7 @@ export default function PlotTable() {
                                   dominantBaseline="central"
                                   fontSize={2.2}
                                   fontWeight="600"
-                                  fontFamily="Helvetica-Bold"
+                                  fontFamily="'Instrument Sans', 'Instrument Sans Fallback', sans-serif"
                                   fill="#ffffff"
                                   stroke="rgb(0, 26, 32)"
                                   strokeWidth={0.4}

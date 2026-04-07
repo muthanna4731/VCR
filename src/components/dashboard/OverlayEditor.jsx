@@ -1051,7 +1051,7 @@ export default function OverlayEditor() {
                           dominantBaseline="middle"
                           fontSize={1.3}
                           fontWeight="600"
-                          fontFamily="'Instrument Sans', sans-serif"
+                          fontFamily="'Instrument Sans', 'Instrument Sans Fallback', sans-serif"
                           fill="#ffffff"
                           stroke="rgba(0, 30, 129, 0.88)"
                           strokeWidth={0.1}
@@ -1105,7 +1105,7 @@ export default function OverlayEditor() {
                         dominantBaseline="central"
                         fontSize={2}
                         fontWeight="700"
-                        fontFamily="'Instrument Sans', sans-serif"
+                        fontFamily="'Instrument Sans', 'Instrument Sans Fallback', sans-serif"
                         fill="#fff"
                         style={{ pointerEvents: 'none', userSelect: 'none' }}
                       >
@@ -1203,7 +1203,7 @@ export default function OverlayEditor() {
                         dominantBaseline="central"
                         fontSize={1.8}
                         fontWeight="700"
-                        fontFamily="'Instrument Sans', sans-serif"
+                        fontFamily="'Instrument Sans', 'Instrument Sans Fallback', sans-serif"
                         fill="#fff"
                         stroke="rgba(0,0,0,0.5)"
                         strokeWidth={0.08}

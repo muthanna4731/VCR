@@ -4,6 +4,53 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light;
+        --boot-bg: #f5f5f0;
+        --boot-text: #151717;
+        --boot-accent: #046ebc;
+      }
+
+      html {
+        background: var(--boot-bg);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--boot-bg);
+        color: var(--boot-text);
+      }
+
+      #root {
+        min-height: 100vh;
+      }
+
+      .app-boot {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at top, rgba(4, 110, 188, 0.12), transparent 45%),
+          linear-gradient(180deg, #f7f6f2 0%, #f3f1eb 100%);
+      }
+
+      .app-boot__mark {
+        width: 3.2rem;
+        height: 3.2rem;
+        border: 0.28rem solid rgba(21, 23, 23, 0.12);
+        border-top-color: var(--boot-accent);
+        border-radius: 999px;
+        animation: app-boot-spin 0.8s linear infinite;
+      }
+
+      @keyframes app-boot-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
 
     <!-- Preload fonts -->
     <link rel="preload" href="/src/fonts/instrument-sans.woff2" as="font" crossorigin="" type="font/woff2" />
@@ -35,16 +82,23 @@
 </head>
 
 <body class="__variable_3d9088 __variable_c1a059">
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-boot" aria-hidden="true">
+        <div class="app-boot__mark"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
       const isLocalDevHost =
         location.hostname === 'localhost' ||
         location.hostname === '127.0.0.1'
+      const isAdminPath =
+        location.pathname === '/admin' ||
+        location.pathname.startsWith('/admin/')
 
-      if ('serviceWorker' in navigator && !isLocalDevHost) {
+      if ('serviceWorker' in navigator && !isLocalDevHost && isAdminPath) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          navigator.serviceWorker.register('/sw.js', { scope: '/admin' })
         })
       }
     </script>

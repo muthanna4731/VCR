@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vcr-dash-v1'
+const CACHE_NAME = 'vcr-dash-v2'
 const PRECACHE_URLS = ['/admin']
 
 // Install: precache the dashboard shell
@@ -27,6 +27,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
+
+  if (!url.pathname.startsWith('/admin')) {
+    return
+  }
 
   if (!['http:', 'https:'].includes(url.protocol)) {
     return
