@@ -99,6 +99,41 @@
     letter-spacing: 0;
 }
 
+.agent-hint {
+    margin: 0.4rem 0 0;
+    font-size: 1.2rem;
+    color: #aeaeb2;
+    line-height: 1.4;
+}
+
+.agent-purpose-toggle {
+    display: flex;
+    border: 1.5px solid #e5e5ea;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.agent-purpose-btn {
+    flex: 1;
+    padding: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #636366;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.agent-purpose-btn + .agent-purpose-btn {
+    border-left: 1.5px solid #e5e5ea;
+}
+
+.agent-purpose-btn--active {
+    background: #046ebc;
+    color: #fff;
+}
+
 .agent-select,
 .agent-input,
 .agent-textarea {

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router'
 import '../../css/dashboard.css'
 import Sidebar from './Sidebar'
@@ -27,7 +28,22 @@ const PAGE_TITLES = {
 
 export default function DashboardLayout() {
   const location = useLocation()
+  const bottomNavRef = useRef(null)
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Dashboard'
+
+  useEffect(() => {
+    const nav = bottomNavRef.current
+    if (!nav) return
+
+    const activeItem = nav.querySelector('.dash-bottomnav-item--active')
+    if (!activeItem) return
+
+    activeItem.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    })
+  }, [location.pathname])
 
   return (
     <div className="dash-shell">
@@ -72,7 +88,7 @@ export default function DashboardLayout() {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="dash-bottomnav" aria-label="Mobile navigation">
+      <nav ref={bottomNavRef} className="dash-bottomnav" aria-label="Mobile navigation">
         {MOBILE_NAV.map(item => (
           <NavLink
             key={item.to}

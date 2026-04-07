@@ -27,8 +27,14 @@ export default function AgentPage() {
   const [clientPhone, setClientPhone] = useState('')
   const [notes, setNotes] = useState('')
 
+  // Scheduled visits for selected agent+layout
+  const [scheduledVisits, setScheduledVisits] = useState([])
+  const [selectedVisitId, setSelectedVisitId] = useState('')
+  const [logType, setLogType] = useState('site_visit') // 'site_visit' | 'other_work'
+  const [workDescription, setWorkDescription] = useState('')
+
   const [step, setStep] = useState(STEPS.SELECT)
-  const [result, setResult] = useState(null) // { withinFence, distanceM, agentName, layoutName }
+  const [result, setResult] = useState(null)
   const [gpsError, setGpsError] = useState(null)
   const [submitError, setSubmitError] = useState(null)
 
@@ -56,10 +62,50 @@ export default function AgentPage() {
     load()
   }, [])
 
-  function handleSelectContinue(e) {
+  async function handleSelectContinue(e) {
     e.preventDefault()
     if (!agentId || !layoutId) return
+
+    // Load today's scheduled visits for this agent+layout
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
+
+    try {
+      const res = await runSupabaseRequest(
+        () => supabase
+          .from('visit_schedules')
+          .select('id, visitor_name, visitor_phone, scheduled_at, status')
+          .eq('agent_id', agentId)
+          .eq('layout_id', layoutId)
+          .in('status', ['pending', 'confirmed'])
+          .gte('scheduled_at', todayStart.toISOString())
+          .lte('scheduled_at', todayEnd.toISOString())
+          .order('scheduled_at'),
+        { label: 'Load agent scheduled visits for today' }
+      )
+      setScheduledVisits(res.data ?? [])
+    } catch (_) {
+      setScheduledVisits([])
+    }
+
+    setSelectedVisitId('')
+    setClientName('')
+    setClientPhone('')
+    setLogType('site_visit')
+    setWorkDescription('')
     setStep(STEPS.FORM)
+  }
+
+  function handleVisitSelect(visitId) {
+    setSelectedVisitId(visitId)
+    if (!visitId) { setClientName(''); setClientPhone(''); return }
+    const visit = scheduledVisits.find(v => v.id === visitId)
+    if (visit) {
+      setClientName(visit.visitor_name ?? '')
+      setClientPhone(visit.visitor_phone ?? '')
+    }
   }
 
   async function handleSubmit(e) {
@@ -115,10 +161,21 @@ export default function AgentPage() {
           longitude:          agentLon,
           is_within_geofence,
           distance_m,
-          notes:              notes.trim() || null,
+          notes:              logType === 'other_work'
+                              ? (workDescription.trim() ? `[Other Work] ${workDescription.trim()}` : '[Other Work]')
+                              : notes.trim() || null,
+          visit_schedule_id:  logType === 'site_visit' ? (selectedVisitId || null) : null,
         }),
         { label: 'Save agent presence log' }
       )
+
+      // If linked to a visit, mark it completed
+      if (logType === 'site_visit' && selectedVisitId) {
+        await runSupabaseMutation(
+          () => supabase.from('visit_schedules').update({ status: 'completed' }).eq('id', selectedVisitId),
+          { label: 'Auto-complete visit on agent check-in' }
+        ).catch(() => {}) // non-fatal
+      }
     } catch (error) {
       setSubmitError(error.message)
       setStep(STEPS.FORM)
@@ -135,6 +192,10 @@ export default function AgentPage() {
     setClientName('')
     setClientPhone('')
     setNotes('')
+    setScheduledVisits([])
+    setSelectedVisitId('')
+    setLogType('site_visit')
+    setWorkDescription('')
     setResult(null)
     setGpsError(null)
     setSubmitError(null)
@@ -197,7 +258,7 @@ export default function AgentPage() {
           </form>
         )}
 
-        {/* Step 2: Client info */}
+        {/* Step 2: Purpose + details */}
         {step === STEPS.FORM && (
           <form className="agent-form" onSubmit={handleSubmit}>
             <div className="agent-form-context">
@@ -206,39 +267,97 @@ export default function AgentPage() {
               <span className="agent-form-context-layout">{layouts.find(l => l.id === layoutId)?.name}</span>
             </div>
 
+            {/* Purpose toggle */}
             <div className="agent-form-group">
-              <label className="agent-label">Client Name</label>
-              <input
-                className="agent-input"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-                placeholder="Who are you meeting?"
-                autoComplete="name"
-              />
+              <label className="agent-label">Purpose</label>
+              <div className="agent-purpose-toggle">
+                <button
+                  type="button"
+                  className={`agent-purpose-btn${logType === 'site_visit' ? ' agent-purpose-btn--active' : ''}`}
+                  onClick={() => setLogType('site_visit')}
+                >
+                  Site Visit
+                </button>
+                <button
+                  type="button"
+                  className={`agent-purpose-btn${logType === 'other_work' ? ' agent-purpose-btn--active' : ''}`}
+                  onClick={() => setLogType('other_work')}
+                >
+                  Other Work
+                </button>
+              </div>
             </div>
 
-            <div className="agent-form-group">
-              <label className="agent-label">Client Phone</label>
-              <input
-                className="agent-input"
-                value={clientPhone}
-                onChange={e => setClientPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                inputMode="tel"
-                autoComplete="tel"
-              />
-            </div>
+            {logType === 'site_visit' ? (
+              <>
+                {scheduledVisits.length > 0 && (
+                  <div className="agent-form-group">
+                    <label className="agent-label">Scheduled Visit Today</label>
+                    <select
+                      className="agent-select"
+                      value={selectedVisitId}
+                      onChange={e => handleVisitSelect(e.target.value)}
+                    >
+                      <option value="">— No linked visit (walk-in) —</option>
+                      {scheduledVisits.map(v => {
+                        const time = new Date(v.scheduled_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {v.visitor_name} · {time}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <p className="agent-hint">Linking auto-fills client details and marks the visit complete.</p>
+                  </div>
+                )}
 
-            <div className="agent-form-group">
-              <label className="agent-label">Notes <span className="agent-optional">(optional)</span></label>
-              <textarea
-                className="agent-textarea"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Any remarks…"
-                rows={3}
-              />
-            </div>
+                <div className="agent-form-group">
+                  <label className="agent-label">Client Name</label>
+                  <input
+                    className="agent-input"
+                    value={clientName}
+                    onChange={e => setClientName(e.target.value)}
+                    placeholder="Who are you meeting?"
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div className="agent-form-group">
+                  <label className="agent-label">Client Phone</label>
+                  <input
+                    className="agent-input"
+                    value={clientPhone}
+                    onChange={e => setClientPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    inputMode="tel"
+                    autoComplete="tel"
+                  />
+                </div>
+
+                <div className="agent-form-group">
+                  <label className="agent-label">Notes <span className="agent-optional">(optional)</span></label>
+                  <textarea
+                    className="agent-textarea"
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Any remarks…"
+                    rows={3}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="agent-form-group">
+                <label className="agent-label">What are you working on?</label>
+                <textarea
+                  className="agent-textarea"
+                  value={workDescription}
+                  onChange={e => setWorkDescription(e.target.value)}
+                  placeholder="e.g. Site maintenance, boundary marking, documentation…"
+                  rows={4}
+                />
+              </div>
+            )}
 
             {submitError && <p className="agent-error">{submitError}</p>}
 

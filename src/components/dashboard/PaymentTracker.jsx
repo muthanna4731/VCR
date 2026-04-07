@@ -266,7 +266,7 @@ function PlanModal({ plot, onClose }) {
         </div>
 
         {loading ? (
-          <div className="dash-form"><div className="dash-loading-inline">Loading…</div></div>
+          <div className="dash-form"><div className="dash-loading-spinner"></div></div>
         ) : (
           <>
             {error && <div className="dash-form"><p className="dash-error">{error}</p></div>}
@@ -602,7 +602,7 @@ export default function PaymentTracker() {
   const filtered = filterLayout ? plots.filter(p => p.layout_id === filterLayout) : plots
   const totalOverdue = plots.reduce((s, p) => s + (p.plan?.summary?.overdue ?? 0), 0)
 
-  if (loading) return <div className="dash-page"><div className="dash-loading-inline">Loading payment data…</div></div>
+  if (loading) return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
 
   return (
     <div className="dash-page">

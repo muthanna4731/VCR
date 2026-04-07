@@ -127,7 +127,7 @@ export default function PlotDetail() {
   if (loading) {
     return (
       <div className="dash-page">
-        <div className="dash-loading-inline">Loading plot…</div>
+        <div className="dash-loading-spinner"></div>
       </div>
     )
   }

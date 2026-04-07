@@ -2,7 +2,27 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { runSupabaseRequest } from '../lib/supabaseRequest'
+import { runSupabaseRequest, runSupabaseMutation } from '../lib/supabaseRequest'
+
+const CHANNEL_OPTIONS = [
+  { value: 'website',    label: 'Website' },
+  { value: 'site_visit', label: 'Site Visit' },
+  { value: 'referral',   label: 'Referral' },
+  { value: 'phone',      label: 'Phone' },
+  { value: 'agent',      label: 'Agent' },
+  { value: 'social',     label: 'Social' },
+  { value: 'other',      label: 'Other' },
+]
+
+const CHANNEL_COLORS = {
+  website:    { color: '#046ebc', bg: '#f0f7ff' },
+  site_visit: { color: '#5856d6', bg: '#f0f0ff' },
+  referral:   { color: '#34c759', bg: '#f0fff4' },
+  phone:      { color: '#c77700', bg: '#fff8e1' },
+  agent:      { color: '#ff6b35', bg: '#fff4f0' },
+  social:     { color: '#af52de', bg: '#faf0ff' },
+  other:      { color: '#636366', bg: '#f5f5f7' },
+}
 
 function formatCurrency(n) {
   if (!n && n !== 0) return '₹0'
@@ -89,6 +109,7 @@ export default function AdminOverviewPage() {
   const [customTo, setCustomTo]         = useState('')
   const [openActionId, setOpenActionId] = useState(null)
   const [lastSync, setLastSync] = useState(null)
+  const [deletingLeadId, setDeletingLeadId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -107,7 +128,7 @@ export default function AdminOverviewPage() {
           runSupabaseRequest(
             () => supabase
               .from('enquiries')
-              .select('id, name, phone, lead_status, created_at, site_layouts(name)')
+              .select('id, name, phone, lead_status, channel, created_at, site_layouts(name)')
               .order('created_at', { ascending: false })
               .limit(10),
             { label: 'Load recent enquiries' }
@@ -222,6 +243,23 @@ export default function AdminOverviewPage() {
     a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function deleteLead(id) {
+    if (!window.confirm('Delete this lead? This cannot be undone.')) return
+    setDeletingLeadId(id)
+    setOpenActionId(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('enquiries').delete().eq('id', id),
+        { label: 'Delete lead from overview' }
+      )
+      setData(prev => ({ ...prev, enquiries: prev.enquiries.filter(e => e.id !== id) }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeletingLeadId(null)
+    }
   }
 
   const greeting = (() => {
@@ -520,7 +558,16 @@ export default function AdminOverviewPage() {
                       {e.site_layouts?.name ?? '—'}
                     </td>
                     <td>
-                      <span className="dash-channel-badge">Enquiry</span>
+                      {(() => {
+                        const ch = e.channel || 'other'
+                        const cfg = CHANNEL_COLORS[ch] ?? CHANNEL_COLORS.other
+                        const label = CHANNEL_OPTIONS.find(o => o.value === ch)?.label ?? ch
+                        return (
+                          <span className="dash-channel-badge" style={{ color: cfg.color, background: cfg.bg }}>
+                            {label}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td>
                       <span className={`dash-stage-badge ${stage.cls}`}>{stage.label}</span>
@@ -569,6 +616,15 @@ export default function AdminOverviewPage() {
                               WhatsApp
                             </a>
                           )}
+                          <div style={{ height: '1px', background: '#f0f0f0', margin: '0.4rem 0' }} />
+                          <button
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.8rem 1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: '#ff3b30' }}
+                            onClick={() => deleteLead(e.id)}
+                            disabled={deletingLeadId === e.id}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '1.6rem' }}>delete</span>
+                            {deletingLeadId === e.id ? 'Deleting…' : 'Delete Lead'}
+                          </button>
                         </div>
                       )}
                     </td>

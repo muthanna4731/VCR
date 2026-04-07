@@ -4,6 +4,16 @@ import { runSupabaseMutation, runSupabaseRequest } from '../../lib/supabaseReque
 
 const VISIT_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
 
+const CHANNEL_OPTIONS = [
+  { value: 'website',    label: 'Website Form' },
+  { value: 'site_visit', label: 'Site Visit' },
+  { value: 'referral',   label: 'Referral' },
+  { value: 'phone',      label: 'Phone Call' },
+  { value: 'agent',      label: 'Agent' },
+  { value: 'social',     label: 'Social Media' },
+  { value: 'other',      label: 'Other' },
+]
+
 const VISIT_STATUS_CONFIG = {
   pending:   { label: 'Pending',   color: '#c77700', bg: '#fff8e1', border: '#ffe08a' },
   confirmed: { label: 'Confirmed', color: '#046ebc', bg: '#f0f7ff', border: '#cce3f8' },
@@ -27,14 +37,21 @@ const ACTION_LABELS = {
 const EMPTY_FORM = {
   layout_id: '',
   agent_id: '',
-  visitor_name: '',
-  visitor_phone: '',
   scheduled_at: '',
   notes: '',
 }
 
-function NewVisitModal({ layouts, agents, onSave, onClose }) {
+const ADVANCED_STATUSES = ['visit_completed', 'converted', 'dropped']
+
+function NewVisitModal({ layouts, agents, leads, onSave, onClose }) {
   const [form, setForm] = useState(EMPTY_FORM)
+  // 'existing' = link to an existing lead, 'new' = create a new lead
+  const [visitorMode, setVisitorMode] = useState('existing')
+  const [selectedLeadId, setSelectedLeadId] = useState('')
+  const [leadSearch, setLeadSearch] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newChannel, setNewChannel] = useState('site_visit')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -43,43 +60,53 @@ function NewVisitModal({ layouts, agents, onSave, onClose }) {
     setForm(f => ({ ...f, [name]: value }))
   }
 
+  const filteredLeads = leads.filter(l => {
+    if (!leadSearch.trim()) return true
+    const q = leadSearch.toLowerCase()
+    return l.name?.toLowerCase().includes(q) || l.phone?.includes(q)
+  })
+
+  const selectedLead = leads.find(l => l.id === selectedLeadId) ?? null
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.layout_id) { setError('Please select a layout.'); return }
-    if (!form.visitor_name.trim()) { setError('Visitor name is required.'); return }
-    if (!form.visitor_phone.trim()) { setError('Visitor phone is required.'); return }
     if (!form.scheduled_at) { setError('Please pick a date and time.'); return }
+
+    if (visitorMode === 'existing') {
+      if (!selectedLeadId) { setError('Please select an existing lead.'); return }
+    } else {
+      if (!newName.trim()) { setError('Visitor name is required.'); return }
+      if (!newPhone.trim()) { setError('Visitor phone is required.'); return }
+    }
 
     setSaving(true)
     setError(null)
     try {
-      // Find or create the linked lead
-      const ADVANCED_STATUSES = ['visit_completed', 'converted', 'dropped']
       let leadId = null
+      let visitorName = ''
+      let visitorPhone = ''
 
-      const existingRes = await supabase
-        .from('enquiries')
-        .select('id, lead_status')
-        .eq('phone', form.visitor_phone.trim())
-        .limit(1)
-
-      if (existingRes.data?.length > 0) {
-        const existing = existingRes.data[0]
-        leadId = existing.id
-        if (!ADVANCED_STATUSES.includes(existing.lead_status)) {
+      if (visitorMode === 'existing') {
+        leadId = selectedLeadId
+        visitorName = selectedLead.name
+        visitorPhone = selectedLead.phone ?? ''
+        if (!ADVANCED_STATUSES.includes(selectedLead.lead_status)) {
           await runSupabaseMutation(
-            () => supabase.from('enquiries').update({ lead_status: 'visit_scheduled' }).eq('id', existing.id),
+            () => supabase.from('enquiries').update({ lead_status: 'visit_scheduled' }).eq('id', leadId),
             { label: 'Update lead status to visit_scheduled' }
           )
         }
       } else {
+        visitorName = newName.trim()
+        visitorPhone = newPhone.trim()
         const newLead = await runSupabaseMutation(
           () => supabase.from('enquiries').insert({
-            name:        form.visitor_name.trim(),
-            phone:       form.visitor_phone.trim(),
+            name:        visitorName,
+            phone:       visitorPhone,
             layout_id:   form.layout_id || null,
             lead_status: 'visit_scheduled',
-            channel:     'site_visit',
+            channel:     newChannel,
           }).select('id').single(),
           { label: 'Create lead from visit schedule' }
         )
@@ -90,8 +117,8 @@ function NewVisitModal({ layouts, agents, onSave, onClose }) {
         () => supabase.from('visit_schedules').insert({
           layout_id:     form.layout_id,
           agent_id:      form.agent_id || null,
-          visitor_name:  form.visitor_name.trim(),
-          visitor_phone: form.visitor_phone.trim(),
+          visitor_name:  visitorName,
+          visitor_phone: visitorPhone,
           scheduled_at:  form.scheduled_at,
           notes:         form.notes.trim() || null,
           status:        'pending',
@@ -114,16 +141,86 @@ function NewVisitModal({ layouts, agents, onSave, onClose }) {
         </div>
         <form className="dash-form" onSubmit={handleSubmit}>
           {error && <p className="dash-error">{error}</p>}
-          <div className="dash-form-row">
-            <div className="dash-form-group">
-              <label className="dash-form-label">Visitor Name *</label>
-              <input className="dash-form-input" name="visitor_name" value={form.visitor_name} onChange={handleChange} placeholder="Full name" required />
-            </div>
-            <div className="dash-form-group">
-              <label className="dash-form-label">Visitor Phone *</label>
-              <input className="dash-form-input" name="visitor_phone" value={form.visitor_phone} onChange={handleChange} placeholder="+91 98765 43210" required />
+
+          {/* Visitor mode toggle */}
+          <div className="dash-form-group">
+            <label className="dash-form-label">Visitor</label>
+            <div className="dash-segmented">
+              <button
+                type="button"
+                className={`dash-segmented-btn${visitorMode === 'existing' ? ' dash-segmented-btn--active' : ''}`}
+                onClick={() => setVisitorMode('existing')}
+              >
+                Existing Lead
+              </button>
+              <button
+                type="button"
+                className={`dash-segmented-btn${visitorMode === 'new' ? ' dash-segmented-btn--active' : ''}`}
+                onClick={() => setVisitorMode('new')}
+              >
+                New Person
+              </button>
             </div>
           </div>
+
+          {visitorMode === 'existing' ? (
+            <div className="dash-form-group">
+              <label className="dash-form-label">Search Lead *</label>
+              <input
+                className="dash-form-input"
+                placeholder="Search by name or phone…"
+                value={leadSearch}
+                onChange={e => { setLeadSearch(e.target.value); setSelectedLeadId('') }}
+              />
+              {leadSearch.trim() && (
+                <div className="dash-lead-search-results">
+                  {filteredLeads.length === 0 ? (
+                    <div className="dash-lead-search-empty">No leads found</div>
+                  ) : (
+                    filteredLeads.slice(0, 8).map(l => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        className={`dash-lead-search-item${selectedLeadId === l.id ? ' dash-lead-search-item--active' : ''}`}
+                        onClick={() => { setSelectedLeadId(l.id); setLeadSearch(l.name) }}
+                      >
+                        <span className="dash-lead-search-name">{l.name}</span>
+                        <span className="dash-lead-search-phone">{l.phone ?? '—'}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+              {selectedLead && (
+                <div className="dash-lead-search-selected">
+                  Linked: <strong>{selectedLead.name}</strong> · {selectedLead.phone ?? '—'} · <em>{selectedLead.lead_status?.replace(/_/g, ' ')}</em>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="dash-form-row">
+              <div className="dash-form-group">
+                <label className="dash-form-label">Name *</label>
+                <input className="dash-form-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name" />
+              </div>
+              <div className="dash-form-group">
+                <label className="dash-form-label">Phone *</label>
+                <input className="dash-form-input" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+91 98765 43210" />
+              </div>
+            </div>
+          )}
+
+          {visitorMode === 'new' && (
+            <div className="dash-form-group">
+              <label className="dash-form-label">Channel of Enquiry</label>
+              <select className="dash-form-select" value={newChannel} onChange={e => setNewChannel(e.target.value)}>
+                {CHANNEL_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="dash-form-row">
             <div className="dash-form-group">
               <label className="dash-form-label">Layout *</label>
@@ -164,6 +261,7 @@ export default function VisitSchedule() {
   const [visits, setVisits] = useState([])
   const [agents, setAgents] = useState([])
   const [layouts, setLayouts] = useState([])
+  const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState({ status: '', layout: '', agent: '' })
@@ -174,7 +272,7 @@ export default function VisitSchedule() {
     setLoading(true)
     setError(null)
     try {
-      const [visitsRes, agentsRes, layoutsRes] = await Promise.all([
+      const [visitsRes, agentsRes, layoutsRes, leadsRes] = await Promise.all([
         runSupabaseRequest(
           () => supabase
             .from('visit_schedules')
@@ -184,10 +282,12 @@ export default function VisitSchedule() {
         ),
         runSupabaseRequest(() => supabase.from('agents').select('id, name').eq('is_active', true).order('name'), { label: 'Load visit agents' }),
         runSupabaseRequest(() => supabase.from('site_layouts').select('id, name').order('name'), { label: 'Load visit layouts' }),
+        runSupabaseRequest(() => supabase.from('enquiries').select('id, name, phone, lead_status').order('name'), { label: 'Load leads for visit modal' }),
       ])
       setVisits(visitsRes.data)
       setAgents(agentsRes.data ?? [])
       setLayouts(layoutsRes.data ?? [])
+      setLeads(leadsRes.data ?? [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -243,7 +343,7 @@ export default function VisitSchedule() {
   for (const s of VISIT_STATUSES) counts[s] = visits.filter(v => v.status === s).length
 
   if (loading) {
-    return <div className="dash-page"><div className="dash-loading-inline">Loading visits…</div></div>
+    return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
   }
 
   return (
@@ -399,6 +499,7 @@ export default function VisitSchedule() {
         <NewVisitModal
           layouts={layouts}
           agents={agents}
+          leads={leads}
           onSave={() => { setShowModal(false); load() }}
           onClose={() => setShowModal(false)}
         />

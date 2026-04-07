@@ -544,6 +544,13 @@
   box-shadow: 0 0 0 3px rgba(4,110,188,0.08);
 }
 
+@media (max-width: 767px) {
+  .buyer-quick-link:hover {
+    border-color: #e5e5ea;
+    box-shadow: none;
+  }
+}
+
 .buyer-quick-link-icon {
   font-size: 2.4rem;
   width: 5rem;

@@ -309,7 +309,7 @@ export default function PlotTable() {
   if (loading) {
     return (
       <div className="dash-page">
-        <div className="dash-loading-inline">Loading plots…</div>
+        <div className="dash-loading-spinner"></div>
       </div>
     )
   }

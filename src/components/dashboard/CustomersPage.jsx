@@ -191,7 +191,7 @@ function BuyerDocsModal({ buyer, onClose }) {
         </div>
         <div className="dash-form">
           {loading ? (
-            <div className="dash-loading-inline">Loading…</div>
+            <div className="dash-loading-spinner"></div>
           ) : error ? (
             <p className="dash-error">{error}</p>
           ) : docs.length === 0 ? (
@@ -256,6 +256,8 @@ export default function CustomersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [docsFor, setDocsFor] = useState(null)
   const [search, setSearch] = useState('')
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -300,7 +302,31 @@ export default function CustomersPage() {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="dash-page"><div className="dash-loading-inline">Loading…</div></div>
+  useEffect(() => {
+    if (!openMenuId) return
+    const handler = e => { if (!e.target.closest('.dash-doc-menu')) setOpenMenuId(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [openMenuId])
+
+  async function deleteBuyer(buyer) {
+    if (!window.confirm(`Delete buyer account for ${buyer.full_name || buyer.email}? This cannot be undone.`)) return
+    setDeletingId(buyer.id)
+    setOpenMenuId(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('profiles').delete().eq('id', buyer.id),
+        { label: 'Delete buyer profile' }
+      )
+      setBuyers(prev => prev.filter(b => b.id !== buyer.id))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (loading) return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
 
   return (
     <>
@@ -382,6 +408,27 @@ export default function CustomersPage() {
                               Payments
                             </Link>
                           )}
+                          <div className="dash-doc-menu">
+                            <button
+                              className="dash-btn dash-btn--sm dash-btn--ghost"
+                              onClick={() => setOpenMenuId(openMenuId === b.id ? null : b.id)}
+                              aria-label="More options"
+                            >
+                              ⋯
+                            </button>
+                            {openMenuId === b.id && (
+                              <div className="dash-doc-menu-dropdown">
+                                <button
+                                  className="dash-doc-menu-item dash-doc-menu-item--danger"
+                                  onClick={() => deleteBuyer(b)}
+                                  disabled={deletingId === b.id}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: '1.6rem' }}>delete</span>
+                                  {deletingId === b.id ? 'Deleting…' : 'Delete Account'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>

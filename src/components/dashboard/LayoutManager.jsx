@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { runSupabaseMutation, runSupabaseRequest } from '../../lib/supabaseRequest'
+import { imageToWebP, compressVideo } from '../../lib/mediaUtils'
 
 const EMPTY_FORM = {
   name: '',
@@ -42,6 +43,284 @@ function mapLayout(row) {
   }
 }
 
+// ─── Gallery Modal ────────────────────────────────────────────────────────────
+function GalleryModal({ layout, onClose }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(null) // e.g. 'Converting… 42%'
+  const [deletingId, setDeletingId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // Close ⋯ menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return
+    const handler = e => { if (!e.target.closest('.dash-gallery-menu')) setOpenMenuId(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [openMenuId])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    runSupabaseRequest(
+      () => supabase
+        .from('layout_media')
+        .select('id, type, url, thumbnail_url, caption, sort_order')
+        .eq('layout_id', layout.id)
+        .order('sort_order'),
+      { label: 'Load gallery' }
+    ).then(res => {
+      if (!cancelled) { setItems(res.data || []); setLoading(false) }
+    }).catch(err => {
+      if (!cancelled) { setError(err.message); setLoading(false) }
+    })
+    return () => { cancelled = true }
+  }, [layout.id])
+
+  async function handlePhotoUpload(file) {
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      setUploadProgress('Converting to WebP…')
+      const webpFile = await imageToWebP(file)
+      setUploadProgress('Uploading…')
+
+      const uid = crypto.randomUUID()
+      const path = `gallery/${layout.id}/${uid}.webp`
+      await runSupabaseMutation(
+        () => supabase.storage.from('layout-images').upload(path, webpFile, { upsert: false }),
+        { label: 'Upload gallery photo' }
+      )
+      const { data: urlData } = supabase.storage.from('layout-images').getPublicUrl(path)
+
+      const { data: newItem } = await runSupabaseMutation(
+        () => supabase.from('layout_media')
+          .insert({ layout_id: layout.id, type: 'photo', url: urlData.publicUrl, sort_order: items.length })
+          .select('id, type, url, thumbnail_url, caption, sort_order')
+          .single(),
+        { label: 'Save gallery photo record' }
+      )
+      if (newItem) setItems(prev => [...prev, newItem])
+    } catch (err) {
+      setError(`Photo upload failed: ${err.message}`)
+    } finally {
+      setUploading(false)
+      setUploadProgress(null)
+    }
+  }
+
+  async function handleVideoUpload(file) {
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      setUploadProgress('Compressing video…')
+      const compressed = await compressVideo(file, 2_500_000, (p) => {
+        setUploadProgress(`Compressing… ${Math.round(p * 100)}%`)
+      })
+      setUploadProgress('Uploading…')
+
+      const uid = crypto.randomUUID()
+      const ext = compressed.name.endsWith('.webm') ? 'webm' : compressed.name.split('.').pop()
+      const path = `gallery/${layout.id}/${uid}.${ext}`
+      await runSupabaseMutation(
+        () => supabase.storage.from('layout-images').upload(path, compressed, { upsert: false }),
+        { label: 'Upload gallery video' }
+      )
+      const { data: urlData } = supabase.storage.from('layout-images').getPublicUrl(path)
+
+      const { data: newItem } = await runSupabaseMutation(
+        () => supabase.from('layout_media')
+          .insert({ layout_id: layout.id, type: 'video', url: urlData.publicUrl, sort_order: items.length })
+          .select('id, type, url, thumbnail_url, caption, sort_order')
+          .single(),
+        { label: 'Save gallery video record' }
+      )
+      if (newItem) setItems(prev => [...prev, newItem])
+    } catch (err) {
+      setError(`Video upload failed: ${err.message}`)
+    } finally {
+      setUploading(false)
+      setUploadProgress(null)
+    }
+  }
+
+  async function handleDelete(item) {
+    setDeletingId(item.id)
+    setOpenMenuId(null)
+    try {
+      try {
+        const url = new URL(item.url)
+        const storagePath = url.pathname.split('/object/public/layout-images/')[1]
+        if (storagePath) {
+          await runSupabaseMutation(
+            () => supabase.storage.from('layout-images').remove([storagePath]),
+            { label: 'Delete gallery file' }
+          )
+        }
+      } catch (_) { /* ignore storage errors — still remove DB record */ }
+      await runSupabaseMutation(
+        () => supabase.from('layout_media').delete().eq('id', item.id),
+        { label: 'Delete gallery record' }
+      )
+      setItems(prev => prev.filter(i => i.id !== item.id))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const photos = items.filter(i => i.type === 'photo')
+  const videos = items.filter(i => i.type === 'video')
+
+  return (
+    <div
+      className="dash-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Gallery"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="dash-modal dash-modal--wide">
+        <div className="dash-modal-header">
+          <div>
+            <h2 className="dash-modal-title">Gallery</h2>
+            <p style={{ fontSize: '1.3rem', color: '#636366', marginTop: '0.2rem' }}>{layout.name}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <label className={`dash-btn dash-btn--sm${uploading ? ' dash-btn--disabled' : ''}`}>
+              {uploading ? (uploadProgress ?? 'Working…') : '+ Photo'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={uploading}
+                onChange={e => { handlePhotoUpload(e.target.files[0]); e.target.value = '' }}
+              />
+            </label>
+            <label className={`dash-btn dash-btn--sm${uploading ? ' dash-btn--disabled' : ''}`}>
+              {uploading ? '' : '+ Video'}
+              <input
+                type="file"
+                accept="video/*"
+                hidden
+                disabled={uploading}
+                onChange={e => { handleVideoUpload(e.target.files[0]); e.target.value = '' }}
+              />
+            </label>
+            <button className="dash-modal-close" onClick={onClose} aria-label="Close">✕</button>
+          </div>
+        </div>
+
+        <div style={{ padding: '0 2.4rem 2.4rem', overflowY: 'auto', maxHeight: '70vh' }}>
+          {error && <p className="dash-error" style={{ marginBottom: '1.6rem' }}>{error}</p>}
+
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+              <div className="dash-loading-spinner" style={{ position: 'static', transform: 'none', margin: 'auto' }} />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="dash-gallery-empty" style={{ padding: '3rem 0', textAlign: 'center' }}>
+              No media yet. Use the buttons above to add photos or videos.
+            </p>
+          ) : (
+            <>
+              {photos.length > 0 && (
+                <>
+                  <p className="dash-gallery-group-label">Photos ({photos.length})</p>
+                  <div className="dash-gallery-grid dash-gallery-grid--modal">
+                    {photos.map(item => (
+                      <GalleryItem
+                        key={item.id}
+                        item={item}
+                        deleting={deletingId === item.id}
+                        menuOpen={openMenuId === item.id}
+                        onMenuToggle={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {videos.length > 0 && (
+                <>
+                  <p className="dash-gallery-group-label" style={photos.length > 0 ? { marginTop: '2.4rem' } : {}}>
+                    Videos ({videos.length})
+                  </p>
+                  <div className="dash-gallery-grid dash-gallery-grid--modal">
+                    {videos.map(item => (
+                      <GalleryItem
+                        key={item.id}
+                        item={item}
+                        deleting={deletingId === item.id}
+                        menuOpen={openMenuId === item.id}
+                        onMenuToggle={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GalleryItem({ item, deleting, menuOpen, onMenuToggle, onDelete }) {
+  return (
+    <div className={`dash-gallery-item${deleting ? ' dash-gallery-item--deleting' : ''}`}>
+      {item.type === 'video' ? (
+        <video className="dash-gallery-thumb" src={item.url} preload="none" />
+      ) : (
+        <img className="dash-gallery-thumb" src={item.thumbnail_url || item.url} alt="" loading="lazy" />
+      )}
+      <div className="dash-gallery-item-footer">
+        <span className={`dash-badge ${item.type === 'video' ? 'dash-badge--draft' : 'dash-badge--ok'}`}>
+          {item.type}
+        </span>
+        <div className="dash-gallery-menu">
+          <button
+            type="button"
+            className="dash-btn dash-btn--sm dash-btn--ghost"
+            style={{ padding: '0.2rem 0.6rem', fontSize: '1.4rem', lineHeight: 1 }}
+            onClick={onMenuToggle}
+            disabled={deleting}
+            aria-label="More options"
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <div className="dash-doc-menu-dropdown">
+              <button
+                type="button"
+                className="dash-doc-menu-item dash-doc-menu-item--danger"
+                onClick={onDelete}
+                disabled={deleting}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '1.6rem' }}>delete</span>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LayoutManager() {
   const navigate = useNavigate()
   const [layouts, setLayouts] = useState([])
@@ -57,12 +336,7 @@ export default function LayoutManager() {
 
   const [uploadingFor, setUploadingFor] = useState(null)
   const [uploadingCardFor, setUploadingCardFor] = useState(null)
-
-  // Gallery state (edit modal only)
-  const [galleryItems, setGalleryItems] = useState([])
-  const [galleryLoading, setGalleryLoading] = useState(false)
-  const [mediaUploading, setMediaUploading] = useState(false)
-  const [mediaDeleting, setMediaDeleting] = useState(null)
+  const [galleryLayout, setGalleryLayout] = useState(null) // layout object for GalleryModal
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -85,39 +359,6 @@ export default function LayoutManager() {
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  // Load gallery items when editing a layout
-  useEffect(() => {
-    if (!editingId) { setGalleryItems([]); return undefined }
-
-    let cancelled = false
-    setGalleryLoading(true)
-
-    async function loadGalleryItems() {
-      try {
-        const { data } = await runSupabaseRequest(
-          () => supabase
-            .from('layout_media')
-            .select('id, layout_id, type, url, thumbnail_url, caption, sort_order')
-            .eq('layout_id', editingId)
-            .order('sort_order'),
-          { label: 'Load layout gallery items' }
-        )
-
-        if (!cancelled) setGalleryItems(data || [])
-      } catch (err) {
-        if (!cancelled) setFormError(err.message)
-      } finally {
-        if (!cancelled) setGalleryLoading(false)
-      }
-    }
-
-    loadGalleryItems()
-
-    return () => {
-      cancelled = true
-    }
-  }, [editingId])
 
   function openCreate() {
     setEditingId(null)
@@ -203,65 +444,6 @@ export default function LayoutManager() {
     await load()
     closeForm()
     setSaving(false)
-  }
-
-  async function handleMediaUpload(file, type) {
-    if (!file || !editingId) return
-    setMediaUploading(true)
-    const ext = file.name.split('.').pop()
-    const uid = crypto.randomUUID()
-    const path = `gallery/${editingId}/${uid}.${ext}`
-
-    try {
-      await runSupabaseMutation(
-        () => supabase.storage
-          .from('layout-images')
-          .upload(path, file, { upsert: false }),
-        { label: 'Upload layout media' }
-      )
-
-      const { data: urlData } = supabase.storage.from('layout-images').getPublicUrl(path)
-
-      const { data: newItem } = await runSupabaseMutation(
-        () => supabase
-          .from('layout_media')
-          .insert({ layout_id: editingId, type, url: urlData.publicUrl, sort_order: galleryItems.length })
-          .select('id, layout_id, type, url, thumbnail_url, caption, sort_order')
-          .single(),
-        { label: 'Save layout media record' }
-      )
-
-      if (newItem) setGalleryItems(prev => [...prev, newItem])
-    } catch (err) {
-      setFormError(`Upload failed: ${err.message}`)
-    } finally {
-      setMediaUploading(false)
-    }
-  }
-
-  async function handleMediaDelete(item) {
-    setMediaDeleting(item.id)
-    try {
-      const url = new URL(item.url)
-      const storagePath = url.pathname.split('/object/public/layout-images/')[1]
-      if (storagePath) {
-        await runSupabaseMutation(
-          () => supabase.storage.from('layout-images').remove([storagePath]),
-          { label: 'Delete layout media file' }
-        )
-      }
-    } catch (_) { /* ignore storage error, still remove from DB */ }
-    try {
-      await runSupabaseMutation(
-        () => supabase.from('layout_media').delete().eq('id', item.id),
-        { label: 'Delete layout media record' }
-      )
-      setGalleryItems(prev => prev.filter(i => i.id !== item.id))
-    } catch (err) {
-      setFormError(err.message)
-    } finally {
-      setMediaDeleting(null)
-    }
   }
 
   async function handleTogglePublish(layout) {
@@ -358,7 +540,7 @@ export default function LayoutManager() {
   if (loading) {
     return (
       <div className="dash-page">
-        <div className="dash-loading-inline">Loading layouts…</div>
+        <div className="dash-loading-spinner"></div>
       </div>
     )
   }
@@ -384,8 +566,7 @@ export default function LayoutManager() {
                 <th>Name</th>
                 <th>City</th>
                 <th>Status</th>
-                <th>Card Image</th>
-                <th>Site Plan</th>
+                <th>Images</th>
                 <th>Overlay</th>
                 <th>Actions</th>
               </tr>
@@ -408,40 +589,46 @@ export default function LayoutManager() {
                       onClick={e => { e.stopPropagation(); handleTogglePublish(layout) }}
                       title="Click to toggle"
                     >
-                      {layout.isPublished ? 'Published' : 'Draft'}
+                      {layout.isPublished ? '✓ Published' : 'Draft'}
                     </button>
                   </td>
                   <td onClick={e => e.stopPropagation()}>
-                    {layout.cardImageUrl ? (
-                      <span className="dash-badge dash-badge--ok">Uploaded</span>
-                    ) : (
-                      <label className="dash-upload-label">
-                        {uploadingCardFor === layout.id ? 'Uploading…' : 'Upload'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={e => handleCardImageUpload(layout.id, e.target.files[0])}
-                          disabled={uploadingCardFor !== null}
-                        />
-                      </label>
-                    )}
-                  </td>
-                  <td onClick={e => e.stopPropagation()}>
-                    {layout.layoutImageUrl ? (
-                      <span className="dash-badge dash-badge--ok">Uploaded</span>
-                    ) : (
-                      <label className="dash-upload-label">
-                        {uploadingFor === layout.id ? 'Uploading…' : 'Upload'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={e => handleImageUpload(layout.id, e.target.files[0])}
-                          disabled={uploadingFor !== null}
-                        />
-                      </label>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.3rem', color: '#636366' }}>
+                        <span style={{ minWidth: '7rem' }}>Card</span>
+                        {layout.cardImageUrl ? (
+                          <span style={{ color: '#34c759', fontWeight: 700, fontSize: '1.5rem' }}>✓</span>
+                        ) : (
+                          <label className="dash-upload-label" style={{ margin: 0 }}>
+                            {uploadingCardFor === layout.id ? '…' : 'Upload'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={e => handleCardImageUpload(layout.id, e.target.files[0])}
+                              disabled={uploadingCardFor !== null}
+                            />
+                          </label>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.3rem', color: '#636366' }}>
+                        <span style={{ minWidth: '7rem' }}>Site Plan</span>
+                        {layout.layoutImageUrl ? (
+                          <span style={{ color: '#34c759', fontWeight: 700, fontSize: '1.5rem' }}>✓</span>
+                        ) : (
+                          <label className="dash-upload-label" style={{ margin: 0 }}>
+                            {uploadingFor === layout.id ? '…' : 'Upload'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={e => handleImageUpload(layout.id, e.target.files[0])}
+                              disabled={uploadingFor !== null}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td onClick={e => e.stopPropagation()}>
                     <Link
@@ -461,6 +648,12 @@ export default function LayoutManager() {
                       </button>
                       <button
                         className="dash-btn dash-btn--sm"
+                        onClick={() => setGalleryLayout(layout)}
+                      >
+                        Gallery
+                      </button>
+                      <button
+                        className="dash-btn dash-btn--sm"
                         onClick={() => openEdit(layout)}
                       >
                         Edit
@@ -472,6 +665,13 @@ export default function LayoutManager() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {galleryLayout && (
+        <GalleryModal
+          layout={galleryLayout}
+          onClose={() => setGalleryLayout(null)}
+        />
       )}
 
       {showForm && (
@@ -617,74 +817,6 @@ export default function LayoutManager() {
                 />
                 <label htmlFor="lm-published">Published (visible on public site)</label>
               </div>
-
-              {/* Gallery — only visible when editing an existing layout */}
-              {editingId && (
-                <div className="dash-gallery-section">
-                  <div className="dash-gallery-section-header">
-                    <span className="dash-form-label" style={{ margin: 0 }}>Gallery</span>
-                    <div style={{ display: 'flex', gap: '0.8rem' }}>
-                      <label className={`dash-btn dash-btn--sm${mediaUploading ? ' dash-btn--disabled' : ''}`}>
-                        {mediaUploading ? 'Uploading…' : '+ Photo'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          disabled={mediaUploading}
-                          onChange={e => { handleMediaUpload(e.target.files[0], 'photo'); e.target.value = '' }}
-                        />
-                      </label>
-                      <label className={`dash-btn dash-btn--sm${mediaUploading ? ' dash-btn--disabled' : ''}`}>
-                        {mediaUploading ? 'Uploading…' : '+ Video'}
-                        <input
-                          type="file"
-                          accept="video/*"
-                          hidden
-                          disabled={mediaUploading}
-                          onChange={e => { handleMediaUpload(e.target.files[0], 'video'); e.target.value = '' }}
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  {galleryLoading ? (
-                    <p className="dash-gallery-empty">Loading…</p>
-                  ) : galleryItems.length === 0 ? (
-                    <p className="dash-gallery-empty">No media yet. Upload photos or videos above.</p>
-                  ) : (
-                    <div className="dash-gallery-grid">
-                      {galleryItems.map(item => (
-                        <div key={item.id} className="dash-gallery-item">
-                          {item.type === 'video' ? (
-                            <video className="dash-gallery-thumb" src={item.url} preload="none" />
-                          ) : (
-                            <img
-                              className="dash-gallery-thumb"
-                              src={item.thumbnail_url || item.url}
-                              alt=""
-                              loading="lazy"
-                            />
-                          )}
-                          <div className="dash-gallery-item-footer">
-                            <span className={`dash-badge ${item.type === 'video' ? 'dash-badge--draft' : 'dash-badge--ok'}`}>
-                              {item.type}
-                            </span>
-                            <button
-                              type="button"
-                              className="dash-gallery-delete-btn"
-                              onClick={() => handleMediaDelete(item)}
-                              disabled={mediaDeleting === item.id}
-                              aria-label="Delete"
-                            >
-                              {mediaDeleting === item.id ? '…' : '✕'}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {formError && <p className="dash-error">{formError}</p>}
 

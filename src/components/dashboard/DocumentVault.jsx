@@ -135,8 +135,10 @@ function LinkModal({ doc, onSave, onClose }) {
 }
 
 function UploadModal({ layouts, plots, onSave, onClose }) {
+  const [mode, setMode] = useState('upload') // 'upload' | 'link'
   const [form, setForm] = useState(EMPTY_FORM)
   const [file, setFile] = useState(null)
+  const [linkUrl, setLinkUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -147,27 +149,38 @@ function UploadModal({ layouts, plots, onSave, onClose }) {
   function handleChange(e) {
     const { name, value, type, checked } = e.target
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
-    // reset plot when layout changes
     if (name === 'layout_id') setForm(f => ({ ...f, layout_id: value, plot_id: '' }))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!file) { setError('Please select a file.'); return }
     if (!form.name.trim()) { setError('Document name is required.'); return }
+
+    if (mode === 'upload') {
+      if (!file) { setError('Please select a file.'); return }
+    } else {
+      const trimmed = linkUrl.trim()
+      if (!trimmed) { setError('Please enter a URL.'); return }
+      if (!trimmed.startsWith('http')) { setError('Please enter a valid URL starting with http.'); return }
+    }
+
     setUploading(true); setError(null)
 
-    const ext = file.name.split('.').pop()
-    const path = `${form.category}/${Date.now()}_${form.name.trim().replace(/\s+/g, '-')}.${ext}`
-
     try {
-      await runSupabaseMutation(
-        () => supabase.storage.from('documents').upload(path, file, { upsert: false }),
-        { label: 'Upload document file' }
-      )
+      let file_url = null
 
-      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
-      const file_url = urlData.publicUrl
+      if (mode === 'upload') {
+        const ext = file.name.split('.').pop()
+        const path = `${form.category}/${Date.now()}_${form.name.trim().replace(/\s+/g, '-')}.${ext}`
+        await runSupabaseMutation(
+          () => supabase.storage.from('documents').upload(path, file, { upsert: false }),
+          { label: 'Upload document file' }
+        )
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+        file_url = urlData.publicUrl
+      } else {
+        file_url = linkUrl.trim()
+      }
 
       await runSupabaseMutation(
         () => supabase.from('documents').insert({
@@ -192,23 +205,56 @@ function UploadModal({ layouts, plots, onSave, onClose }) {
     <div className="dash-modal-overlay" role="dialog" aria-modal="true" aria-label="Upload Document">
       <div className="dash-modal">
         <div className="dash-modal-header">
-          <h2 className="dash-modal-title">Upload Document</h2>
+          <h2 className="dash-modal-title">Add Document</h2>
           <button className="dash-modal-close" onClick={onClose}>✕</button>
         </div>
         <form className="dash-form" onSubmit={handleSubmit}>
           {error && <p className="dash-error">{error}</p>}
 
           <div className="dash-form-group">
-            <label className="dash-form-label">File *</label>
-            <input
-              type="file"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-              className="dash-form-input"
-              onChange={e => setFile(e.target.files?.[0] ?? null)}
-              required
-            />
-            <span className="dash-form-hint">PDF, images, Word, or Excel files accepted</span>
+            <label className="dash-form-label">Source</label>
+            <div className="dash-segmented">
+              <button
+                type="button"
+                className={`dash-segmented-btn${mode === 'upload' ? ' dash-segmented-btn--active' : ''}`}
+                onClick={() => setMode('upload')}
+              >
+                Upload File
+              </button>
+              <button
+                type="button"
+                className={`dash-segmented-btn${mode === 'link' ? ' dash-segmented-btn--active' : ''}`}
+                onClick={() => setMode('link')}
+              >
+                Add Link
+              </button>
+            </div>
           </div>
+
+          {mode === 'upload' ? (
+            <div className="dash-form-group">
+              <label className="dash-form-label">File *</label>
+              <input
+                type="file"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                className="dash-form-input"
+                onChange={e => setFile(e.target.files?.[0] ?? null)}
+              />
+              <span className="dash-form-hint">PDF, images, Word, or Excel files accepted</span>
+            </div>
+          ) : (
+            <div className="dash-form-group">
+              <label className="dash-form-label">Document URL *</label>
+              <input
+                className="dash-form-input"
+                type="url"
+                value={linkUrl}
+                onChange={e => setLinkUrl(e.target.value)}
+                placeholder="https://docs.google.com/…"
+              />
+              <span className="dash-form-hint">Google Docs, Drive, Dropbox, or any direct link</span>
+            </div>
+          )}
 
           <div className="dash-form-row">
             <div className="dash-form-group">
@@ -255,7 +301,7 @@ function UploadModal({ layouts, plots, onSave, onClose }) {
           <div className="dash-form-actions">
             <button type="button" className="dash-btn" onClick={onClose}>Cancel</button>
             <button type="submit" className="dash-btn dash-btn--primary" disabled={uploading}>
-              {uploading ? 'Uploading…' : 'Upload Document'}
+              {uploading ? (mode === 'upload' ? 'Uploading…' : 'Saving…') : (mode === 'upload' ? 'Upload Document' : 'Save Document')}
             </button>
           </div>
         </form>
@@ -349,7 +395,7 @@ export default function DocumentVault() {
     return true
   })
 
-  if (loading) return <div className="dash-page"><div className="dash-loading-inline">Loading documents…</div></div>
+  if (loading) return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
 
   return (
     <div className="dash-page">
@@ -357,7 +403,7 @@ export default function DocumentVault() {
         <h1 className="dash-page-title">Documents</h1>
         <span className="dash-page-count">{filtered.length} of {docs.length}</span>
         <button className="dash-btn dash-btn--primary" onClick={() => setShowModal(true)}>
-          + Upload Document
+          + Add Document
         </button>
       </div>
 

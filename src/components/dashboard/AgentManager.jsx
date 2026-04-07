@@ -206,7 +206,7 @@ export default function AgentManager() {
   }
 
   if (loading) {
-    return <div className="dash-page"><div className="dash-loading-inline">Loading agents…</div></div>
+    return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
   }
 
   return (

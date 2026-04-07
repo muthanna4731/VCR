@@ -297,7 +297,7 @@ export default function LeadPipeline() {
   for (const s of LEAD_STATUSES) counts[s] = leads.filter(l => l.lead_status === s).length
 
   if (loading) {
-    return <div className="dash-page"><div className="dash-loading-inline">Loading leads…</div></div>
+    return <div className="dash-page"><div className="dash-loading-spinner"></div></div>
   }
 
   return (
