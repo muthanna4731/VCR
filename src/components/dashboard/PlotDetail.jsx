@@ -337,10 +337,13 @@ export default function PlotDetail() {
           </div>
 
           <h2 className="dash-section-title" style={{ marginTop: '2.4rem' }}>Buyer Information</h2>
+          <p className="dash-form-hint" style={{ marginBottom: '1.2rem' }}>
+            Adding a name here creates a customer entry visible under Customers.
+          </p>
 
           <div className="dash-form-row">
             <div className="dash-form-group">
-              <label className="dash-form-label" htmlFor="pd-buyer-name">Buyer Name</label>
+              <label className="dash-form-label" htmlFor="pd-buyer-name">Buyer Name *</label>
               <input
                 id="pd-buyer-name"
                 type="text"

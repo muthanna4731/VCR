@@ -548,43 +548,33 @@ export default function VisitSchedule() {
                             {ACTION_LABELS[action]}
                           </button>
                         ))}
-                        <div style={{ position: 'relative' }}>
+                        <div className="dash-context-menu-wrap">
                           <button
-                            className="dash-btn dash-btn--sm dash-btn--ghost"
+                            className="dash-btn dash-btn--sm dash-btn--ghost dash-more-btn"
                             onClick={() => setMenuOpenId(menuOpenId === visit.id ? null : visit.id)}
                             aria-label="More actions"
-                            style={{ padding: '0.2rem 0.6rem', fontSize: '1.6rem', lineHeight: 1 }}
                           >
                             ⋮
                           </button>
                           {menuOpenId === visit.id && (
                             <>
-                              <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => { setMenuOpenId(null); setDeleteConfirmId(null) }} />
-                              <div style={{
-                                position: 'absolute', right: 0, top: '100%', zIndex: 10,
-                                background: '#fff', borderRadius: '0.6rem', boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
-                                border: '1px solid #e5e5ea', minWidth: '14rem', padding: '0.4rem 0', marginTop: '0.2rem',
-                              }}>
+                              <div className="dash-context-backdrop" onClick={() => { setMenuOpenId(null); setDeleteConfirmId(null) }} />
+                              <div className="dash-context-menu">
                                 <button
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.7rem 1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: '#1c1c1e' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f2f2f7'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                     onClick={() => openEditVisit(visit)}
                                   >
                                     Edit
                                   </button>
-                                <div style={{ height: '1px', background: '#e5e5ea', margin: '0.2rem 0' }} />
+                                <div className="dash-context-divider" />
                                 {deleteConfirmId === visit.id ? (
-                                  <div style={{ padding: '0.7rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                    <span style={{ fontSize: '1.3rem', color: '#ff3b30', fontWeight: 600 }}>Delete?</span>
+                                  <div className="dash-context-confirm">
+                                    <span className="dash-context-confirm-label">Delete?</span>
                                     <button className="dash-btn dash-btn--sm dash-btn--danger" onClick={() => deleteVisit(visit.id)}>Yes</button>
                                     <button className="dash-btn dash-btn--sm" onClick={() => setDeleteConfirmId(null)}>No</button>
                                   </div>
                                 ) : (
                                   <button
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.7rem 1.2rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: '#ff3b30' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f2f2f7'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    className="dash-context-btn--danger"
                                     onClick={() => setDeleteConfirmId(visit.id)}
                                   >
                                     Delete

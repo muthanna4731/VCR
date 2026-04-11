@@ -75,12 +75,6 @@ export default function DashboardLayout() {
             <button className="dash-topbar-icon-btn" aria-label="Refresh" onClick={() => window.location.reload()}>
               <span className="material-symbols-outlined">refresh</span>
             </button>
-            <button className="dash-topbar-icon-btn" aria-label="Notifications" title="Notifications — coming soon">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button className="dash-topbar-icon-btn" aria-label="Settings" title="Settings — coming soon">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
           </div>
         </header>
 

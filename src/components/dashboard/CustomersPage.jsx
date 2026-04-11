@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import LeadPipeline from './LeadPipeline'
-import { runSupabaseRequest } from '../../lib/supabaseRequest'
+import { runSupabaseMutation, runSupabaseRequest } from '../../lib/supabaseRequest'
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function CustomersPage() {
@@ -10,6 +10,8 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [menuOpenId, setMenuOpenId] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,6 +46,20 @@ export default function CustomersPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  async function deleteCustomer(id) {
+    setDeleteConfirmId(null)
+    setMenuOpenId(null)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('payment_plans').delete().eq('id', id),
+        { label: 'Delete customer' }
+      )
+      setBuyers(prev => prev.filter(b => b.id !== id))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   const filtered = buyers.filter(b => {
     if (!search.trim()) return true
@@ -122,6 +138,36 @@ export default function CustomersPage() {
                       <Link to="/admin/payments" className="dash-btn dash-btn--sm dash-btn--ghost">
                         Payments
                       </Link>
+                      <div className="dash-context-menu-wrap">
+                        <button
+                          className="dash-btn dash-btn--sm dash-btn--ghost dash-more-btn"
+                          onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
+                          aria-label="More actions"
+                        >
+                          ⋮
+                        </button>
+                        {menuOpenId === b.id && (
+                          <>
+                            <div className="dash-context-backdrop" onClick={() => { setMenuOpenId(null); setDeleteConfirmId(null) }} />
+                            <div className="dash-context-menu">
+                              {deleteConfirmId === b.id ? (
+                                <div className="dash-context-confirm">
+                                  <span className="dash-context-confirm-label">Delete?</span>
+                                  <button className="dash-btn dash-btn--sm dash-btn--danger" onClick={() => deleteCustomer(b.id)}>Yes</button>
+                                  <button className="dash-btn dash-btn--sm" onClick={() => setDeleteConfirmId(null)}>No</button>
+                                </div>
+                              ) : (
+                                <button
+                                  className="dash-context-btn--danger"
+                                  onClick={() => setDeleteConfirmId(b.id)}
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
