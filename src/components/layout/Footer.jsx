@@ -41,8 +41,7 @@ function HomeFooter() {
         <div className="footer-content">
           <div className="footer-newsletter-container">
             <div>
-              <div className="footer-newsletter-title">Subscribe to our Newsletter!</div>
-              <NewsletterForm />
+              <div className="footer-newsletter-title">Start your Journey!</div>
             </div>
             <div className="footer-contacts">
               <div data-contact="address" className="footer-contact">
@@ -59,7 +58,7 @@ function HomeFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+1 212 994 9965</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+ 91 98860 48471</span></a></div>
               </div>
             </div>
           </div>
@@ -95,8 +94,7 @@ function InnerFooter() {
         <div className="footer-content">
           <div className="footer-newsletter-container">
             <div>
-              <div className="footer-newsletter-title">Subscribe to our Newsletter!</div>
-              <NewsletterForm />
+              <div className="footer-newsletter-title">Start your Journey!</div>
             </div>
             <div className="footer-contacts">
               <div data-contact="address" className="footer-contact">
@@ -113,27 +111,20 @@ function InnerFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+1 212 994 9965</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+ 91 98860 48471</span></a></div>
               </div>
             </div>
           </div>
-          <div className="footer-links">
-            <div className="footer-nav">
-              <a className="footer-nav-link" href="/search"><span data-text="Search">Search</span></a>
-              <a className="footer-nav-link" href="/agents"><span data-text="Agents">Agents</span></a>
-              <a className="footer-nav-link" href="/join"><span data-text="Join">Join</span></a>
-            </div>
-            <Socials />
+          <Socials />
+        </div>
+        <div className="footer-logo"><img src={vcrLogo} alt="VCR" /></div>
+        <div className="footer-copyright-container">
+          <div className="footer-sublinks">
+            <a href="/terms-of-service">Terms</a>
+            <a href="/privacy-policy">Privacy policy</a>
           </div>
-          <div className="footer-logo"><img src={vcrLogo} alt="VCR" /></div>
-          <div className="footer-copyright-container">
-            <div className="footer-sublinks">
-              <a href="/terms-of-service">Terms</a>
-              <a href="/privacy-policy">Privacy policy</a>
-            </div>
-            <div>VCR Builders and Developers</div>
-            <div>Copyright © 2026</div>
-          </div>
+          <div>VCR Builders and Developers</div>
+          <div>Copyright © 2026</div>
         </div>
       </div>
     </div>
