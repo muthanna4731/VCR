@@ -61,7 +61,7 @@ export default function AboutPage() {
               </div>
               <div className="about-contact-item">
                 <span className="about-contact-label">Phone</span>
-                <a href="tel:+12129949965">+1 212 994 9965</a>
+                <a href="tel:+91 98860 48471">+91 98860 48471</a>
               </div>
             </div>
           </div>
