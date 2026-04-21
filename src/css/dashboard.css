@@ -4937,3 +4937,693 @@
     font-size: 1.6rem;
     line-height: 1;
 }
+
+/* ============================================
+   MOBILE TOPBAR ACTION BUTTONS GROUP
+   ============================================ */
+.dash-mobile-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+/* ============================================
+   UPDATES PAGE
+   ============================================ */
+.dash-updates-page {
+    max-width: 72rem;
+    margin: 0 auto;
+}
+
+/* ─── Compose area ─── */
+.dash-updates-compose {
+    padding: 2.4rem;
+    margin-bottom: 3.2rem;
+}
+
+.dash-updates-compose-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 1.6rem;
+}
+
+.dash-updates-compose-avatar {
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 50%;
+    background: rgba(4, 110, 188, 0.1);
+    border: 1.5px solid rgba(4, 110, 188, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #046ebc;
+    flex-shrink: 0;
+    font-family: var(--font-label);
+}
+
+.dash-updates-compose-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.dash-updates-compose-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.dash-updates-compose-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.dash-updates-compose-input {
+    width: 100%;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: 1.2rem;
+    padding: 1.4rem 1.6rem;
+    font-size: 1.5rem;
+    font-family: var(--font-body);
+    color: #1d1d1f;
+    background: rgba(255, 255, 255, 0.6);
+    resize: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    line-height: 1.5;
+    min-height: 6rem;
+}
+
+.dash-updates-compose-input:focus {
+    outline: none;
+    border-color: rgba(4, 110, 188, 0.4);
+    box-shadow: 0 0 0 3px rgba(4, 110, 188, 0.08);
+}
+
+.dash-updates-compose-input::placeholder {
+    color: #aeaeb2;
+}
+
+.dash-updates-compose-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dash-updates-compose-hint {
+    font-size: 1.2rem;
+    color: #aeaeb2;
+    font-weight: 500;
+}
+
+/* ─── Empty state ─── */
+.dash-updates-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 2rem;
+    text-align: center;
+}
+
+.dash-updates-empty p {
+    font-size: 1.5rem;
+    color: #8e8e93;
+    margin: 0;
+}
+
+/* ─── Feed ─── */
+.dash-updates-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.dash-update-card {
+    padding: 2rem 2.4rem;
+    transition: box-shadow 0.2s;
+}
+
+.dash-update-card:hover {
+    box-shadow: 0 1.2rem 4.8rem rgba(31, 38, 135, 0.1),
+        inset 0 1px 1px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.dash-update-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 1.2rem;
+}
+
+/* ─── Avatars ─── */
+.dash-update-avatar {
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: var(--font-label);
+}
+
+.dash-update-avatar--owner {
+    background: rgba(4, 110, 188, 0.1);
+    border: 1.5px solid rgba(4, 110, 188, 0.25);
+    color: #046ebc;
+}
+
+.dash-update-avatar--staff {
+    background: rgba(255, 149, 0, 0.1);
+    border: 1.5px solid rgba(255, 149, 0, 0.25);
+    color: #e08600;
+}
+
+.dash-update-author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.dash-update-author-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1d1d1f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ─── Role badges ─── */
+.dash-update-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.8rem;
+    border-radius: 100px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: var(--font-label);
+    flex-shrink: 0;
+}
+
+.dash-update-role--owner {
+    color: #046ebc;
+    background: rgba(4, 110, 188, 0.1);
+    border: 1px solid rgba(4, 110, 188, 0.2);
+}
+
+.dash-update-role--staff {
+    color: #e08600;
+    background: rgba(255, 149, 0, 0.1);
+    border: 1px solid rgba(255, 149, 0, 0.2);
+}
+
+.dash-update-time {
+    font-size: 1.2rem;
+    color: #aeaeb2;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.dash-update-message {
+    font-size: 1.5rem;
+    color: #3a3a3c;
+    line-height: 1.6;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ─── Update card menu ─── */
+.dash-update-menu {
+    margin-left: 0.4rem;
+    flex-shrink: 0;
+}
+
+.dash-update-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: #aeaeb2;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.dash-update-menu-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #3a3a3c;
+}
+
+.dash-update-menu-btn .material-symbols-outlined {
+    font-size: 1.8rem;
+}
+
+.dash-update-menu-dropdown {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 1rem;
+    box-shadow: 0 0.8rem 2.4rem rgba(0, 0, 0, 0.12);
+    min-width: 14rem;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.dash-update-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    width: 100%;
+    padding: 1rem 1.4rem;
+    border: none;
+    background: transparent;
+    font-size: 1.4rem;
+    color: #3a3a3c;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+}
+
+.dash-update-menu-item:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.dash-update-menu-item .material-symbols-outlined {
+    font-size: 1.6rem;
+    color: #636366;
+}
+
+.dash-update-menu-item--danger {
+    color: #d70015;
+}
+
+.dash-update-menu-item--danger .material-symbols-outlined {
+    color: #d70015;
+}
+
+.dash-update-menu-item--danger:hover {
+    background: rgba(215, 0, 21, 0.06);
+}
+
+/* ─── Inline edit & delete confirm ─── */
+.dash-update-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.dash-update-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+}
+
+.dash-update-delete-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem;
+    padding: 0.4rem 0;
+}
+
+.dash-update-delete-confirm p {
+    font-size: 1.4rem;
+    color: #636366;
+    margin: 0;
+}
+
+/* ============================================
+   DELETE CONFIRMATION MODAL
+   ============================================ */
+.dash-confirm-overlay {
+    z-index: 1000;
+}
+
+.dash-confirm-modal {
+    background: #fff;
+    border-radius: 1.6rem;
+    padding: 3.2rem;
+    width: 100%;
+    max-width: 42rem;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.08);
+    animation: dash-confirm-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dash-confirm-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.dash-confirm-icon-wrap {
+    width: 5.6rem;
+    height: 5.6rem;
+    border-radius: 50%;
+    background: #fff1f0;
+    border: 2px solid #ffccc7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+}
+
+.dash-confirm-icon {
+    font-size: 2.8rem;
+    color: #ff3b30;
+}
+
+.dash-confirm-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin: 0 0 0.8rem;
+}
+
+.dash-confirm-message {
+    font-size: 1.4rem;
+    color: #636366;
+    line-height: 1.5;
+    margin: 0 0 2.4rem;
+}
+
+.dash-confirm-message strong {
+    color: #1d1d1f;
+    font-weight: 600;
+}
+
+.dash-confirm-actions {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+}
+
+.dash-confirm-actions .dash-btn {
+    min-width: 10rem;
+    padding: 1rem 2rem;
+}
+
+.dash-btn--danger {
+    background: #ff3b30;
+    color: #fff;
+    border: none;
+    border-radius: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+}
+
+.dash-btn--danger:hover {
+    background: #e0352b;
+}
+
+.dash-btn--danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   RESPONSIVE: UPDATES + CONFIRM MODAL
+   ============================================ */
+@media (max-width: 767px) {
+    .dash-mobile-topbar-actions {
+        pointer-events: auto;
+        display: flex;
+        gap: 0.6rem;
+    }
+
+    .dash-updates-page {
+        padding: 2rem 1.6rem 8rem;
+    }
+
+    .dash-updates-compose {
+        padding: 1.6rem;
+        margin-bottom: 2rem;
+    }
+
+    .dash-updates-compose-header {
+        margin-bottom: 1.2rem;
+    }
+
+    .dash-updates-compose-input {
+        padding: 1.2rem;
+        font-size: 1.4rem;
+        min-height: 5rem;
+    }
+
+    .dash-updates-compose-actions {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .dash-updates-compose-hint {
+        text-align: center;
+    }
+
+    .dash-updates-compose-actions .dash-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .dash-updates-feed {
+        gap: 0.8rem;
+    }
+
+    .dash-update-card {
+        padding: 1.6rem;
+    }
+
+    .dash-update-avatar {
+        width: 3.2rem;
+        height: 3.2rem;
+        font-size: 1.1rem;
+    }
+
+    .dash-update-author-name {
+        font-size: 1.3rem;
+    }
+
+    .dash-update-message {
+        font-size: 1.4rem;
+    }
+
+    .dash-confirm-modal {
+        margin: 1.6rem;
+        padding: 2.4rem 2rem;
+    }
+
+    .dash-confirm-actions {
+        flex-direction: column;
+    }
+
+    .dash-confirm-actions .dash-btn {
+        width: 100%;
+    }
+
+    .dash-team-card {
+        flex-direction: column;
+        gap: 1.2rem;
+        align-items: flex-start;
+    }
+
+    .dash-team-card-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .dash-team-role-grid {
+        flex-direction: column;
+    }
+}
+
+/* ============================================
+   TEAM MANAGEMENT SECTION
+   ============================================ */
+.dash-team-section {
+    margin-top: 4.8rem;
+    padding-top: 3.2rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dash-team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+}
+
+.dash-team-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+}
+
+.dash-team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.dash-team-card {
+    padding: 1.6rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.6rem;
+    transition: box-shadow 0.2s;
+}
+
+.dash-team-card:hover {
+    box-shadow: 0 0.8rem 3.2rem rgba(31, 38, 135, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.8),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.dash-team-card-left {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.dash-team-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.dash-team-card-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.dash-team-card-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1d1d1f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-team-card-email {
+    font-size: 1.2rem;
+    color: #8e8e93;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-team-card-right {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-shrink: 0;
+}
+
+.dash-team-you-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.6rem;
+    border-radius: 100px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #34c759;
+    background: rgba(52, 199, 89, 0.1);
+    border: 1px solid rgba(52, 199, 89, 0.2);
+    font-family: var(--font-label);
+}
+
+.dash-team-delete-btn {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 0.8rem;
+    background: none;
+    border: 1.5px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #aeaeb2;
+    transition: all 0.18s;
+}
+
+.dash-team-delete-btn:hover {
+    color: #ff3b30;
+    background: rgba(255, 59, 48, 0.06);
+    border-color: rgba(255, 59, 48, 0.15);
+}
+
+.dash-team-delete-btn .material-symbols-outlined {
+    font-size: 1.8rem;
+}
+
+/* ─── Role selector grid (Add User modal) ─── */
+.dash-team-role-grid {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.dash-team-role-opt {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.4rem 1rem;
+    border-radius: 1.2rem;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.4);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #636366;
+    cursor: pointer;
+    transition: all 0.18s;
+    font-family: var(--font-body);
+}
+
+.dash-team-role-opt:hover {
+    border-color: rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.dash-team-role-opt--active {
+    color: #046ebc;
+    border-color: rgba(4, 110, 188, 0.4);
+    background: rgba(4, 110, 188, 0.06);
+}
+
+.dash-team-role-opt--active .material-symbols-outlined {
+    color: #046ebc;
+}

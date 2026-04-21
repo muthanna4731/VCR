@@ -1,4 +1,4 @@
-const brands = ['MagicBricks', '99acres', 'Housing.com', 'NoBroker', 'Square Yards', 'PropTiger', 'CommonFloor']
+const brands = ['MysoreTimes', 'Times Real Estate Awards', 'NAREDCO Mysore']
 
 export default function MarqueeSection() {
   return (

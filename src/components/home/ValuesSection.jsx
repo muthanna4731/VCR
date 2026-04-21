@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { ArrowSvg } from '../ui/ArrowSvg'
 
 export default function ValuesSection() {
@@ -14,15 +15,15 @@ export default function ValuesSection() {
                     <div className="em">Buy your land.</div>
                   </h2>
                 </div>
-                <button type="button" className="button-button-round button-color-primary"
+                <Link to="/properties" className="button-button-round button-color-primary"
                   aria-haspopup="dialog" aria-expanded="false" data-state="closed">
                   <div className="button-content">
                     <div className="button-button-round-text">
-                      <span data-text="Start Your Search">Start Your Journey</span>
+                      <span data-text="Explore Projects">Explore Projects</span>
                     </div>
                     <span className="button-icon-after"><ArrowSvg /></span>
                   </div>
-                </button>
+                </Link>
               </div>
             </div>
             <div className="assymetric-cols-col">

@@ -19,7 +19,7 @@ function FeatureItem({ img, alt, title, text }) {
         <button type="button" className="button-button-round button-color-secondary button-inversed"
           aria-haspopup="dialog" aria-expanded="false" data-state="closed">
           <div className="button-content">
-            <div className="button-button-round-text"><span data-text="Learn More">Learn More</span></div>
+            <div className="button-button-round-text"><span data-text="View More">View More</span></div>
             <span className="button-icon-after"><ArrowSvg /></span>
           </div>
         </button>
@@ -52,11 +52,10 @@ export default function UpcomingProjectsSection() {
   <div className="features-row">
     <FeatureItem img={mortgageImg} alt="VCR Riverview Garden" title="VCR Riverview Garden" text="Srirangpatna - 12 acres" />
     <FeatureItem img={propertyMgmtImg} alt="VCR Ambhabhavi Nagara" title="VCR Ambhabhavi Nagara" text="Hunsur - 11 acres" />
-    <FeatureItem img={developmentImg} alt="VCR Devagiri Enclave" title="VCR Devagiri Enclave" text="Hunsur - 5 acres" />
+    <FeatureItem img={developmentImg} alt="VCR Bhoovaraha" title="VCR Bhoovaraha" text="KRS - 8 acres" />
   </div>
   <div className="features-row">
     <FeatureItem img={developmentImg} alt="VCR Nanjundeshwara Township" title="VCR Nanjundeshwara Township" text="Nanjungud - 23 acres" />
-    <FeatureItem img={developmentImg} alt="VCR Bhoovaraha" title="VCR Bhoovaraha" text="KRS - 8 acres" />
   </div>
 </div>
       </div>

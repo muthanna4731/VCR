@@ -46,6 +46,14 @@ export default function AboutPage() {
               With unwavering family support and a community-first approach, VCR Builders and Developers continues
               to transform challenges into milestones — and remains a beacon of hope for many.
             </p>
+
+            <h2 className="about-section-heading" style={{ marginTop: '4rem' }}>Professional Expertise & Milestones</h2>
+            <p style={{ marginTop: '1rem' }}>
+              With a career encompassing all kinds of building operations and civil work, Ravikumar brings extensive expertise to every project. Beginning as a Civil Contractor in 2008 handling road contracts and government projects (ZP, PWD & Nirmithi Kendra), he later established VCR Builders & Developers in 2011. Since then, he has successfully delivered over 25 exclusive homes and 4 residential layouts, consistently ensuring projects meet timelines and budgets.
+            </p>
+            <p style={{ marginTop: '1rem' }}>
+              His core strengths include land development, layout civil works, 3D modeling and rendering, layout elevation advice, and comprehensive project management. This technical proficiency is reflected in flagship projects such as VCR River View Gardenia and premium residential buildings across Srirangapatna, Mysuru, and Bengaluru. Furthermore, he is an active participant in the industry community, significantly contributing to events like the BAI Mysore Centre's MYBUILD exhibitions.
+            </p>
           </div>
           
           <div className="about-contact-block-wrapper">

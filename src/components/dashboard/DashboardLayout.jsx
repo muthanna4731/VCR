@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router'
 import '../../css/dashboard.css'
 import Sidebar from './Sidebar'
 import NetworkBanner from '../layout/NetworkBanner'
@@ -24,10 +24,12 @@ const PAGE_TITLES = {
   '/admin/payments':  'Payments',
   '/admin/documents': 'Documents',
   '/admin/visits':    'Visits',
+  '/admin/updates':   'Updates',
 }
 
 export default function DashboardLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const bottomNavRef = useRef(null)
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Dashboard'
 
@@ -54,13 +56,23 @@ export default function DashboardLayout() {
           <span className="dash-mobile-topbar-name">RealEstateOS</span>
           <span className="dash-mobile-topbar-sub">VCR Builders</span>
         </div>
-        <button
-          className="dash-mobile-topbar-refresh"
-          onClick={() => window.location.reload()}
-          aria-label="Refresh"
-        >
-          <span className="material-symbols-outlined">refresh</span>
-        </button>
+        <div className="dash-mobile-topbar-actions">
+          <button
+            className="dash-mobile-topbar-refresh"
+            onClick={() => navigate('/admin/updates')}
+            aria-label="Updates"
+            title="Updates & Remarks"
+          >
+            <span className="material-symbols-outlined">chat_bubble</span>
+          </button>
+          <button
+            className="dash-mobile-topbar-refresh"
+            onClick={() => window.location.reload()}
+            aria-label="Refresh"
+          >
+            <span className="material-symbols-outlined">refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Desktop sidebar */}
@@ -72,6 +84,14 @@ export default function DashboardLayout() {
         <header className="dash-topbar">
           <span className="dash-topbar-label">{pageTitle}</span>
           <div className="dash-topbar-actions">
+            <button
+              className="dash-topbar-icon-btn"
+              aria-label="Updates"
+              title="Updates & Remarks"
+              onClick={() => navigate('/admin/updates')}
+            >
+              <span className="material-symbols-outlined">chat_bubble</span>
+            </button>
             <button className="dash-topbar-icon-btn" aria-label="Refresh" onClick={() => window.location.reload()}>
               <span className="material-symbols-outlined">refresh</span>
             </button>

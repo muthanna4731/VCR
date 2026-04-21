@@ -31,6 +31,7 @@ const PaymentTracker = lazy(() => import('./components/dashboard/PaymentTracker'
 const DocumentVault = lazy(() => import('./components/dashboard/DocumentVault'))
 const CustomersPage = lazy(() => import('./components/dashboard/CustomersPage'))
 const VisitSchedule = lazy(() => import('./components/dashboard/VisitSchedule'))
+const UpdatesPage = lazy(() => import('./components/dashboard/UpdatesPage'))
 
 // Buyer portal — lazy loaded (only needed by buyers)
 const BuyerProtectedRoute = lazy(() => import('./components/buyer/BuyerProtectedRoute'))
@@ -116,6 +117,7 @@ export default function App() {
             <Route path="documents" element={<Suspense fallback={<DashFallback />}><DocumentVault /></Suspense>} />
             <Route path="customers" element={<Suspense fallback={<DashFallback />}><CustomersPage /></Suspense>} />
             <Route path="visits" element={<Suspense fallback={<DashFallback />}><VisitSchedule /></Suspense>} />
+            <Route path="updates" element={<Suspense fallback={<DashFallback />}><UpdatesPage /></Suspense>} />
           </Route>
         </Routes>
       </BrowserRouter>

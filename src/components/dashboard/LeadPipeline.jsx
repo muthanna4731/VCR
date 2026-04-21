@@ -33,6 +33,29 @@ const LEAD_STATUS_CONFIG = {
   dropped:         { label: 'Dropped',          color: '#ff3b30', bg: '#fff1f0', border: '#ffccc7' },
 }
 
+// ─── Delete Confirmation Modal ────────────────────────────────────────────────
+function DeleteConfirmModal({ leadName, onConfirm, onCancel, deleting }) {
+  return (
+    <div className="dash-modal-overlay dash-confirm-overlay" role="dialog" aria-modal="true" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="dash-confirm-modal">
+        <div className="dash-confirm-icon-wrap">
+          <span className="material-symbols-outlined dash-confirm-icon">warning</span>
+        </div>
+        <h3 className="dash-confirm-title">Delete Lead</h3>
+        <p className="dash-confirm-message">
+          Are you sure you want to delete <strong>{leadName}</strong>? This action cannot be undone.
+        </p>
+        <div className="dash-confirm-actions">
+          <button className="dash-btn" onClick={onCancel} disabled={deleting}>Cancel</button>
+          <button className="dash-btn dash-btn--danger" onClick={onConfirm} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Lead Edit Modal ──────────────────────────────────────────────────────────
 function LeadEditModal({ lead, isNew, layouts, agents, onSave, onClose }) {
   const [form, setForm] = useState({
@@ -255,6 +278,8 @@ export default function LeadPipeline() {
   const [filters, setFilters]     = useState({ status: '', layout: '', agent: '' })
   const [editingLead, setEditingLead] = useState(null)
   const [creatingLead, setCreatingLead] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -282,6 +307,23 @@ export default function LeadPipeline() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  async function handleDeleteLead() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await runSupabaseMutation(
+        () => supabase.from('enquiries').delete().eq('id', deleteTarget.id),
+        { label: 'Delete lead' }
+      )
+      setLeads(prev => prev.filter(l => l.id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const filtered = leads.filter(l => {
     if (filters.status && l.lead_status !== filters.status) return false
@@ -421,14 +463,25 @@ export default function LeadPipeline() {
                       {lead.agents?.name ?? <span style={{ color: '#aeaeb2' }}>Unassigned</span>}
                     </td>
                     <td>
-                      <button
-                        className="dash-btn dash-btn--sm dash-btn--ghost"
-                        onClick={() => setEditingLead(lead)}
-                        title="Edit lead"
-                        aria-label={`Edit lead ${lead.name}`}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '1.6rem', verticalAlign: 'middle' }}>edit</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button
+                          className="dash-btn dash-btn--sm dash-btn--ghost"
+                          onClick={() => setEditingLead(lead)}
+                          title="Edit lead"
+                          aria-label={`Edit lead ${lead.name}`}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '1.6rem', verticalAlign: 'middle' }}>edit</span>
+                        </button>
+                        <button
+                          className="dash-btn dash-btn--sm dash-btn--ghost"
+                          onClick={() => setDeleteTarget(lead)}
+                          title="Delete lead"
+                          aria-label={`Delete lead ${lead.name}`}
+                          style={{ color: '#ff3b30' }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '1.6rem', verticalAlign: 'middle' }}>delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -456,6 +509,16 @@ export default function LeadPipeline() {
           agents={agents}
           onSave={() => { setCreatingLead(false); load() }}
           onClose={() => setCreatingLead(false)}
+        />
+      )}
+
+      {/* Styled Delete Confirmation Modal */}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          leadName={deleteTarget.name}
+          onConfirm={handleDeleteLead}
+          onCancel={() => setDeleteTarget(null)}
+          deleting={deleting}
         />
       )}
     </div>

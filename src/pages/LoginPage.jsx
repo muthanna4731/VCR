@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import '../css/dashboard.css'
 
 function isStaffRole(role) {
@@ -10,7 +11,7 @@ function isStaffRole(role) {
 export default function LoginPage() {
   const { user, profile, signIn, loading } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -31,13 +32,43 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+
+    if (!name.trim()) {
+      setError('Please enter your name.')
+      return
+    }
+
     setSubmitting(true)
-    const { error: signInError } = await signIn(email, password)
-    if (signInError) {
-      setError('Invalid email or password.')
+
+    try {
+      // Look up email by staff name using the RPC function
+      const { data: email, error: rpcError } = await supabase.rpc('get_email_by_name', {
+        staff_name: name.trim(),
+      })
+
+      if (rpcError) {
+        setError('Unable to look up staff name. Please try again.')
+        setSubmitting(false)
+        return
+      }
+
+      if (!email) {
+        setError('No staff account found with that name.')
+        setSubmitting(false)
+        return
+      }
+
+      // Sign in with the looked-up email and the provided password
+      const { error: signInError } = await signIn(email, password)
+      if (signInError) {
+        setError('Invalid name or password.')
+        setSubmitting(false)
+      }
+      // On success: onAuthStateChange fires → user set → useEffect navigates to /admin
+    } catch (err) {
+      setError('Something went wrong. Please try again.')
       setSubmitting(false)
     }
-    // On success: onAuthStateChange fires → user set → useEffect navigates to /admin
   }
 
   if (loading) {
@@ -57,16 +88,16 @@ export default function LoginPage() {
 
         <form className="dash-login-form" onSubmit={handleSubmit} noValidate>
           <div className="dash-form-group">
-            <label className="dash-form-label" htmlFor="login-email">Email</label>
+            <label className="dash-form-label" htmlFor="login-name">Name</label>
             <input
-              id="login-email"
-              type="email"
+              id="login-name"
+              type="text"
               className="dash-form-input"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              value={name}
+              onChange={e => setName(e.target.value)}
               required
-              autoComplete="email"
-              placeholder="you@vcrbuilders.in"
+              autoComplete="name"
+              placeholder="Your full name"
             />
           </div>
 
