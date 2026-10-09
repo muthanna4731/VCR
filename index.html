@@ -33,7 +33,11 @@
         min-height: 100vh;
       }
 
+      /* Covers the prerendered crawler content until React mounts and replaces #root. */
       .app-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
         min-height: 100vh;
         display: flex;
         align-items: center;
@@ -52,6 +56,18 @@
         animation: app-boot-spin 0.8s linear infinite;
       }
 
+      .seo-static {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+        font: 16px/1.7 system-ui, sans-serif;
+        color: var(--boot-text);
+      }
+
+      .seo-static a { color: var(--boot-accent); }
+      .seo-static table { border-collapse: collapse; width: 100%; }
+      .seo-static th, .seo-static td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
+
       @keyframes app-boot-spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -69,9 +85,13 @@
     <!-- Preload hero image -->
     <link rel="preload" as="image" href="/src/images/house.webp" />
 
-    <!-- SEO -->
-    <title>VCR Builders and Developers</title>
-    <meta name="description" content="Karnataka's most thoughtful layout developers. Premium plots, gated communities, Vastu-compliant." />
+    <!-- SEO: everything between the seo:head markers is replaced per route by scripts/prerender.mjs -->
+    <!--seo:head:start-->
+    <title>VCR Builders and Developers | Gated Plots near Mysore — Srirangapatna, Hunsur, Nanjangud</title>
+    <meta name="description" content="Mysuru-based developer of gated, Vastu-compliant residential plot layouts and managed farm land in Srirangapatna, Hunsur, Nanjangud, KRS and H.D. Kote. View live plot maps and book a site visit." />
+    <!--seo:head:end-->
+    <meta name="geo.region" content="IN-KA" />
+    <meta name="geo.placename" content="Mysuru" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#046ebc" />
 
@@ -81,9 +101,6 @@
     <meta name="apple-mobile-web-app-title" content="VCR" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <meta property="og:title" content="VCR Builders and Developers | Premium Plots in Karnataka" />
-    <meta property="og:description" content="Karnataka's most thoughtful layout developers. Premium plots, gated communities, Vastu-compliant." />
-    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/pwa-icon-512.png" type="image/png" />
 </head>
 
@@ -92,7 +109,9 @@
       <div class="app-boot" aria-hidden="true">
         <div class="app-boot__mark"></div>
       </div>
+      <!--seo:body-->
     </div>
+    <noscript><style>.app-boot { display: none; }</style></noscript>
     <script type="module" src="/src/main.jsx"></script>
     <script>
       const isLocalDevHost =

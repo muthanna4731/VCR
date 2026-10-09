@@ -11,6 +11,7 @@ import LayoutGallery from '../components/properties/LayoutGallery'
 import PlotDetailModal from '../components/properties/PlotDetailModal'
 import VisitBookingModal from '../components/properties/VisitBookingModal'
 import { formatPricePerSqft } from '../data/mockData'
+import useSeo from '../seo/useSeo'
 
 export default function LayoutViewPage() {
   const { slug } = useParams()
@@ -22,6 +23,12 @@ export default function LayoutViewPage() {
 
   const { layout, city, plots, overlays, loading, error } = usePlots(slug)
   const { media, loading: mediaLoading } = useLayoutMedia(layout?.id)
+  const cityName = city?.name?.trim()
+  useSeo(layout && {
+    title: `${layout.name}${cityName ? `, ${cityName}` : ''} — Plots for Sale | VCR Builders and Developers`,
+    description: `${(layout.description || layout.name).trim().replace(/\.?$/, '.')} Live plot map with sizes, facing, availability and price per sq ft. Book a site visit with VCR Builders and Developers.`,
+    path: `/properties/${slug}`,
+  })
 
   // All hooks must run before any conditional return
   const stats = useMemo(() => {

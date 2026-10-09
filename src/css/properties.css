@@ -2071,3 +2071,102 @@
     line-height: 1.6;
     margin: 0;
 }
+
+/* ─── SEO content pages (guide, FAQ, area pages) ─── */
+.seo-article {
+    max-width: 86rem;
+}
+
+.seo-updated {
+    font-size: 1.3rem;
+    color: #8e8e93;
+    margin-bottom: 3rem;
+}
+
+.seo-lead,
+.seo-section p,
+.seo-list li {
+    font-size: 1.6rem;
+    color: #636366;
+    line-height: 1.8;
+}
+
+.seo-lead,
+.seo-section p {
+    margin-bottom: 1.6rem;
+}
+
+.seo-section {
+    margin: 5rem 0;
+}
+
+.seo-section a,
+.seo-article .contact-page-subtitle a,
+.paperwork-card-title a {
+    color: #046ebc;
+}
+
+.seo-list {
+    padding-left: 2.2rem;
+    margin-bottom: 1.6rem;
+}
+
+.seo-list li {
+    margin-bottom: 0.8rem;
+}
+
+.seo-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 2rem;
+}
+
+.seo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.5rem;
+    color: #151717;
+}
+
+.seo-table th,
+.seo-table td {
+    text-align: left;
+    padding: 1.2rem 1.4rem;
+    border-bottom: 1px solid rgba(21, 23, 23, 0.1);
+    vertical-align: top;
+}
+
+.seo-table thead th {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.seo-table td {
+    color: #636366;
+}
+
+.seo-sources {
+    font-size: 1.3rem !important;
+    color: #8e8e93 !important;
+}
+
+.seo-faq-item {
+    padding: 2.4rem 0;
+    border-bottom: 1px solid rgba(21, 23, 23, 0.1);
+}
+
+.seo-faq-q {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #151717;
+    margin-bottom: 0.8rem;
+}
+
+.seo-faq-a {
+    font-size: 1.6rem;
+    color: #636366;
+    line-height: 1.8;
+    margin: 0;
+}

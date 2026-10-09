@@ -4,12 +4,16 @@ import Header from './Header'
 import Footer from './Footer'
 import LoadingLine from './LoadingLine'
 import NetworkBanner from './NetworkBanner'
+import useSeo from '../../seo/useSeo'
+import { getRouteMeta } from '../../seo/content'
 
 export default function RootLayout() {
   const headerRef = useRef(null)
   const location = useLocation()
   const isHome = location.pathname === '/'
   const isContact = location.pathname === '/contact'
+  const routeMeta = getRouteMeta(location.pathname)
+  useSeo(routeMeta && { ...routeMeta, path: location.pathname })
 
   return (
     <>

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router'
 import { AuthProvider } from './components/providers/AuthProvider'
 import RootLayout from './components/layout/RootLayout'
 import ScrollToTop from './components/layout/ScrollToTop'
+import { AREAS, FAQ, GUIDE } from './seo/content'
 
 // Home page — loaded eagerly for first paint
 import HomePage from './pages/HomePage'
@@ -13,6 +14,9 @@ const LayoutViewPage = lazy(() => import('./pages/LayoutViewPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const PaperworkPage = lazy(() => import('./pages/PaperworkPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const GuidePage = lazy(() => import('./pages/GuidePage'))
+const FaqPage = lazy(() => import('./pages/FaqPage'))
+const AreaPage = lazy(() => import('./pages/AreaPage'))
 
 // Auth + Agent
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -71,6 +75,11 @@ export default function App() {
             <Route path="contact" element={<Suspense fallback={<PublicFallback />}><ContactPage /></Suspense>} />
             <Route path="paperwork" element={<Suspense fallback={<PublicFallback />}><PaperworkPage /></Suspense>} />
             <Route path="about" element={<Suspense fallback={<PublicFallback />}><AboutPage /></Suspense>} />
+            <Route path={GUIDE.path.slice(1)} element={<Suspense fallback={<PublicFallback />}><GuidePage /></Suspense>} />
+            <Route path={FAQ.path.slice(1)} element={<Suspense fallback={<PublicFallback />}><FaqPage /></Suspense>} />
+            {AREAS.map(area => (
+              <Route key={area.key} path={area.path.slice(1)} element={<Suspense fallback={<PublicFallback />}><AreaPage area={area} /></Suspense>} />
+            ))}
           </Route>
 
           {/* Auth */}

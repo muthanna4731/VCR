@@ -1143,3 +1143,20 @@
         font-size: 1.4rem
     }
 }
+.footer-seo-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem 2.4rem;
+    margin-top: 3rem;
+    font-size: 1.4rem;
+    line-height: 1.5;
+}
+
+.footer-seo-links a {
+    color: hsla(0, 0%, 100%, .6);
+    text-decoration: none;
+}
+
+.footer-seo-links a:hover {
+    color: #fff;
+}

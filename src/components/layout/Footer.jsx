@@ -1,5 +1,7 @@
 import { ArrowSvg } from '../ui/ArrowSvg'
+import { Link } from 'react-router'
 import vcrLogo from '../../images/VCR Logo-optimized.webp'
+import { AREAS, FAQ, GUIDE } from '../../seo/content'
 
 function NewsletterForm() {
   return (
@@ -27,6 +29,20 @@ function Socials() {
       <a href="https://www.instagram.com/vcrdevelopers/" target="_blank" rel="noopener noreferrer" className="footer-social-link">Instagram</a>
       <a href="#" target="_blank" rel="noopener noreferrer" className="footer-social-link">Youtube</a>
     </div>
+  )
+}
+
+// Plain crawlable links to the guide, FAQ and area pages — the internal-link
+// path search engines and AI crawlers use to discover them.
+function FooterSeoLinks() {
+  return (
+    <nav className="footer-seo-links" aria-label="Plots near Mysore">
+      <Link to="/properties">All properties</Link>
+      {AREAS.map(area => <Link key={area.path} to={area.path}>{area.title.replace(/ for Sale/, '')}</Link>)}
+      <Link to={GUIDE.path}>Mysuru plot buying guide</Link>
+      <Link to={FAQ.path}>FAQ</Link>
+      <Link to="/about">About VCR</Link>
+    </nav>
   )
 }
 
@@ -58,7 +74,7 @@ function HomeFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+ 91 98860 48471</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+ 91 98860 48471</span></a></div>
               </div>
             </div>
           </div>
@@ -73,13 +89,16 @@ function HomeFooter() {
             <Socials />
           </div>
           <div className="footer-logo"><img src={vcrLogo} alt="VCR" /></div>
-          <div className="footer-copyright-container">
-            <div className="footer-sublinks">
-              <a href="/terms-of-service">Terms</a>
-              <a href="/privacy-policy">Privacy policy</a>
+          <div style={{ gridArea: 'copyright' }}>
+            <FooterSeoLinks />
+            <div className="footer-copyright-container">
+              <div className="footer-sublinks">
+                <a href="/terms-of-service">Terms</a>
+                <a href="/privacy-policy">Privacy policy</a>
+              </div>
+              <div>VCR Builders and Developers</div>
+              <div>Copyright © 2026</div>
             </div>
-            <div>VCR Builders and Developers</div>
-            <div>Copyright © 2026</div>
           </div>
         </div>
       </div>
@@ -111,13 +130,14 @@ function InnerFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+12129949965"><span>+ 91 98860 48471</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+ 91 98860 48471</span></a></div>
               </div>
             </div>
           </div>
           <Socials />
         </div>
         <div className="footer-logo"><img src={vcrLogo} alt="VCR" /></div>
+        <FooterSeoLinks />
         <div className="footer-copyright-container">
           <div className="footer-sublinks">
             <a href="/terms-of-service">Terms</a>
