@@ -21,6 +21,7 @@ const num = v => {
 function byNewest(a, b) {
   if (a.entry_date !== b.entry_date) return a.entry_date < b.entry_date ? 1 : -1
   if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1
+  if (a.id !== b.id) return a.id < b.id ? 1 : -1
   return 0
 }
 
@@ -206,6 +207,10 @@ export function useMaterialLog() {
         clash = res.data
       }
       if (!clash) throw err
+      // Never adopt the Warehouse as a project site.
+      if (clash.kind === 'warehouse') {
+        throw new Error(`A site named "${layout.name}" already exists`)
+      }
       if (clash.layout_id === id) { upsertLocalSite(clash); return clash.id }
       if (clash.layout_id) {
         throw new Error(`A site named "${layout.name}" already exists for another project`)
@@ -237,6 +242,12 @@ export function useMaterialLog() {
 
   const updateEntry = useCallback(async (id, form) => {
     const row = await resolveForm(form)
+    if (row.kind === 'out' && !row.from_site_id) {
+      // The DB only defaults the source on INSERT; on UPDATE the out CHECK would fail.
+      const warehouse = sitesRef.current.find(s => s.kind === 'warehouse' && !s.archived)
+        ?? sitesRef.current.find(s => s.kind === 'warehouse')
+      if (warehouse) row.from_site_id = warehouse.id
+    }
     const { data } = await runSupabaseMutation(
       () => supabase
         .from('material_entries')
