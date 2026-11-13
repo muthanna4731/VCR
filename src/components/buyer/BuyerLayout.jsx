@@ -3,6 +3,7 @@ import '../../css/buyer-portal.css'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 import { useAuth } from '../../hooks/useAuth'
 import NetworkBanner from '../layout/NetworkBanner'
+import vcrLogo from '../../images/VCR Logo-optimized.webp'
 
 export default function BuyerLayout() {
   useDocumentTitle('My plot | VCR App')
@@ -13,7 +14,7 @@ export default function BuyerLayout() {
       <NetworkBanner />
       <nav className="buyer-nav">
         <div className="buyer-nav-inner">
-          <div className="buyer-nav-brand">VCR</div>
+          <img src={vcrLogo} alt="VCR Developers" className="buyer-nav-brand" width="1029" height="551" decoding="async" />
           <div className="buyer-nav-links">
             <NavLink to="/my" end className="buyer-nav-link">Overview</NavLink>
             <NavLink to="/my/plot" className="buyer-nav-link">My Plot</NavLink>

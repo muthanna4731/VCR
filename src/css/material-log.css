@@ -311,6 +311,88 @@ select.dash-ml-input {
 .dash-ml-input--filter { width: auto; min-width: 13rem; font-size: 1.4rem; }
 .dash-ml-input--filter[type='date'] { min-width: 15rem; }
 
+/* ─── Date range filter ───
+   One button names the range; the panel offers one-tap ranges and a
+   labelled From / To for anything else. */
+.dash-range { position: relative; }
+.dash-range-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 44px;
+    padding: 0 1.2rem;
+    border: 1px solid #d8d8de;
+    border-radius: 0.8rem;
+    background: #fff;
+    font: 500 1.4rem var(--font-body);
+    color: var(--dash-text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.dash-range-btn .material-symbols-outlined { font-size: 1.9rem; color: #6e6e73; }
+.dash-range-btn.is-active { border-color: #046ebc; color: #046ebc; background: #f0f7ff; }
+.dash-range-btn.is-active .material-symbols-outlined { color: #046ebc; }
+.dash-range-btn:focus-visible { outline: none; border-color: var(--dash-primary); box-shadow: var(--dash-ml-focus); }
+.dash-range-caret { margin-left: auto; }
+.dash-range-btn[aria-expanded='true'] .dash-range-caret { transform: rotate(180deg); }
+
+.dash-range-panel {
+    /* Rendered on <body>; DateRangeFilter sets top/left/width. */
+    position: fixed;
+    z-index: 1000;
+    max-height: calc(100vh - 2.4rem);
+    overflow-y: auto;
+    font-family: var(--font-body);
+    padding: 1.6rem;
+    background: #fff;
+    border: 1px solid rgba(21, 23, 23, 0.08);
+    border-radius: 1.6rem;
+    box-shadow: 0 24px 48px -20px rgba(4, 110, 188, 0.35), 0 2px 6px rgba(21, 23, 23, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+}
+.dash-range-presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+.dash-range-chip {
+    min-height: 40px;
+    padding: 0 1.2rem;
+    border: 1px solid #e3e5e9;
+    border-radius: 100px;
+    background: #fff;
+    font: 500 1.4rem var(--font-body);
+    color: #3a3a3c;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dash-range-chip:hover { border-color: #046ebc; color: #046ebc; }
+.dash-range-chip.is-on { background: #046ebc; border-color: #046ebc; color: #fff; }
+.dash-range-chip:focus-visible,
+.dash-range-done:focus-visible { outline: 2px solid #046ebc; outline-offset: 2px; }
+
+.dash-range-custom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid rgba(21, 23, 23, 0.07);
+}
+.dash-range-field { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.dash-range-field > span { font-size: 1.3rem; font-weight: 600; color: var(--dash-ml-muted); }
+.dash-range-field .dash-ml-input { font-size: 1.5rem; }
+
+.dash-range-foot { display: flex; align-items: center; justify-content: flex-end; gap: 1.2rem; }
+.dash-range-done {
+    min-height: 40px;
+    padding: 0 2rem;
+    border: 0;
+    border-radius: 100px;
+    background: #046ebc;
+    color: #fff;
+    font: 600 1.4rem var(--font-body);
+    cursor: pointer;
+}
+.dash-range-done:hover { background: #035aa0; }
+
 .dash-ml-rows { list-style: none; margin: 0; padding: 0; }
 .dash-ml-row {
     display: grid;
@@ -469,6 +551,9 @@ select.dash-ml-input {
     .dash-ml-recent-head { flex-direction: column; align-items: stretch; }
     .dash-ml-filters { display: grid; grid-template-columns: 1fr 1fr; }
     .dash-ml-input--filter, .dash-ml-input--filter[type='date'] { min-width: 0; width: 100%; }
+    .dash-range { grid-column: 1 / -1; }
+    .dash-range-btn { width: 100%; font-size: 1.6rem; }
+    .dash-range-field .dash-ml-input { font-size: 1.6rem; }
     /* iOS Safari zooms the page when a focused field is under 16px */
     .dash-ml-input--filter { font-size: 1.6rem; }
 

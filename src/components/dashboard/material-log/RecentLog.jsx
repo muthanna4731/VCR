@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatINR, istDate, materialKey } from '../../../lib/materialLog'
+import DateRangeFilter from '../DateRangeFilter'
 
 const PAGE = 30
 const KIND_LABEL = { in: 'IN', out: 'OUT', note: 'NOTE' }
@@ -124,8 +125,12 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
             <option value="">All materials</option>
             {materials.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <input className="dash-ml-input dash-ml-input--filter" type="date" aria-label="From date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} />
-          <input className="dash-ml-input dash-ml-input--filter" type="date" aria-label="To date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} />
+          <DateRangeFilter
+            from={from}
+            to={to}
+            today={today}
+            onChange={r => { setFrom(r.from); setTo(r.to) }}
+          />
           {filtering && (
             <button type="button" className="dash-ml-link" onClick={() => { setSiteFilter(''); setMaterialFilter(''); setFrom(''); setTo('') }}>
               Clear filters

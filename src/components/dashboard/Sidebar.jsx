@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router'
 import { useAuth } from '../../hooks/useAuth'
+import vcrLogo from '../../images/VCR Logo-optimized.webp'
 
 const NAV_ITEMS = [
   { to: '/admin',           label: 'Overview',  icon: 'grid_view',    end: true },
@@ -28,8 +29,15 @@ export default function Sidebar() {
   return (
     <aside className="dash-sidebar">
       <div className="dash-sidebar-brand">
-        <h1 className="dash-sidebar-brand-title">RealEstateOS</h1>
-        <p className="dash-sidebar-brand-sub">VCR Builders</p>
+        <img
+          src={vcrLogo}
+          alt="VCR Developers"
+          className="dash-sidebar-logo"
+          width="1029"
+          height="551"
+          decoding="async"
+          draggable="false"
+        />
       </div>
 
       <nav className="dash-sidebar-nav" aria-label="Dashboard navigation">
