@@ -20,9 +20,12 @@
 --   has no column limit), and handle_new_user copied role from sign-up
 --   metadata. Either lets a buyer or agent make themselves owner and read the
 --   cost log. So this migration also:
---     - adds trigger profiles_role_guard on INSERT and UPDATE OF role. An update
---       that changes the role, or an insert with any role other than 'buyer',
---       is rejected unless auth.uid() is null or the caller is an owner.
+--     - adds trigger profiles_role_guard on INSERT and UPDATE OF role, id. An
+--       update that changes the role, or an insert with any role other than
+--       'buyer', is rejected unless auth.uid() is null or the caller is an
+--       owner. Changing profiles.id is rejected for everyone but the database
+--       itself (otherwise a manager could re-point the owner's row at another
+--       account and inherit the role without ever touching role).
 --       auth.uid() is null in the SQL editor and for the service role (its JWT
 --       has no sub), which is the only role allowed to call admin_create_staff,
 --       and for GoTrue's own insert into auth.users (handle_new_user). Covering
@@ -66,6 +69,12 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     changing := NEW.role IS DISTINCT FROM 'buyer';
   ELSE
+    -- Re-pointing a row (UPDATE profiles SET id = ...) would hand its role to
+    -- another account without touching role, so ids are frozen for everyone
+    -- except the database itself (auth.uid() null).
+    IF NEW.id IS DISTINCT FROM OLD.id AND auth.uid() IS NOT NULL THEN
+      RAISE EXCEPTION 'Profile id cannot be changed';
+    END IF;
     changing := NEW.role IS DISTINCT FROM OLD.role;
   END IF;
 
@@ -83,7 +92,7 @@ $$;
 
 DROP TRIGGER IF EXISTS profiles_role_guard ON public.profiles;
 CREATE TRIGGER profiles_role_guard
-  BEFORE INSERT OR UPDATE OF role ON public.profiles
+  BEFORE INSERT OR UPDATE OF role, id ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.profiles_role_guard();
 
 -- ─── Staff helper ──────────────────────────────────────────────────────────────
@@ -162,39 +171,50 @@ CREATE TABLE IF NOT EXISTS public.material_entries (
   created_by_name text,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz,
-  deleted_at      timestamptz,
+  deleted_at      timestamptz
+);
 
-  -- per-kind rules
-  CONSTRAINT material_entries_in_rules CHECK (
-    kind <> 'in' OR (
-      site_id IS NOT NULL
-      AND material IS NOT NULL AND btrim(material) <> ''
-      AND amount IS NOT NULL AND amount > 0
-    )
-  ),
-  CONSTRAINT material_entries_out_rules CHECK (
-    kind <> 'out' OR (
-      site_id IS NOT NULL
-      AND from_site_id IS NOT NULL
-      AND from_site_id <> site_id
-      AND material IS NOT NULL AND btrim(material) <> ''
-    )
-  ),
-  CONSTRAINT material_entries_note_rules CHECK (
-    kind <> 'note' OR (note IS NOT NULL AND btrim(note) <> '' AND material IS NULL)
-  ),
-  -- from_site_id is for Out entries only
-  CONSTRAINT material_entries_from_site_out_only CHECK (
-    kind = 'out' OR from_site_id IS NULL
-  ),
-  -- "Miscellaneous" needs a short description, whatever the kind
-  CONSTRAINT material_entries_misc_needs_note CHECK (
-    material IS NULL OR lower(btrim(material)) <> 'miscellaneous'
-    OR (note IS NOT NULL AND btrim(note) <> '')
-  ),
-  CONSTRAINT material_entries_numbers_sane CHECK (
-    (quantity IS NULL OR quantity > 0) AND (rate IS NULL OR rate >= 0)
+-- Check constraints are standalone (drop + add) rather than inside CREATE TABLE,
+-- so re-running after an older paste still brings them up to date.
+
+-- per-kind rules
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_in_rules;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_in_rules CHECK (
+  kind <> 'in' OR (
+    site_id IS NOT NULL
+    AND material IS NOT NULL AND btrim(material) <> ''
+    AND amount IS NOT NULL AND amount > 0
   )
+);
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_out_rules;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_out_rules CHECK (
+  kind <> 'out' OR (
+    site_id IS NOT NULL
+    AND from_site_id IS NOT NULL
+    AND from_site_id <> site_id
+    AND material IS NOT NULL AND btrim(material) <> ''
+  )
+);
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_note_rules;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_note_rules CHECK (
+  kind <> 'note' OR (note IS NOT NULL AND btrim(note) <> '' AND material IS NULL)
+);
+
+-- from_site_id is for Out entries only
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_from_site_out_only;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_from_site_out_only CHECK (
+  kind = 'out' OR from_site_id IS NULL
+);
+
+-- "Miscellaneous" needs a short description, whatever the kind
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_misc_needs_note;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_misc_needs_note CHECK (
+  material IS NULL OR lower(btrim(material)) <> 'miscellaneous'
+  OR (note IS NOT NULL AND btrim(note) <> '')
+);
+ALTER TABLE public.material_entries DROP CONSTRAINT IF EXISTS material_entries_numbers_sane;
+ALTER TABLE public.material_entries ADD CONSTRAINT material_entries_numbers_sane CHECK (
+  (quantity IS NULL OR quantity > 0) AND (rate IS NULL OR rate >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS material_entries_entry_date_idx ON public.material_entries (entry_date DESC);

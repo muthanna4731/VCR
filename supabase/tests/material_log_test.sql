@@ -492,6 +492,54 @@ begin
   perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000b5') = 'owner', 'superuser insert blocked');
 end $$;
 
+-- ─── 9c. profile ids cannot be swapped to escape the role lock ──────────────
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000c1', 'swapmgr@t', '{"full_name":"Swap Manager"}'),
+  ('00000000-0000-0000-0000-0000000000c2', 'swapacct@t', '{"full_name":"Swap Account"}'),
+  ('00000000-0000-0000-0000-0000000000c3', 'swapowner@t', '{"full_name":"Swap Owner"}'),
+  ('00000000-0000-0000-0000-0000000000c4', 'swapfree@t', '{"full_name":"Swap Free"}');
+update profiles set role = 'manager' where id = '00000000-0000-0000-0000-0000000000c1';
+update profiles set role = 'owner'   where id = '00000000-0000-0000-0000-0000000000c3';
+delete from profiles where id = '00000000-0000-0000-0000-0000000000c2';  -- the account the manager controls
+
+-- manager re-points the owner's row at their other account
+do $$
+declare msg text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+  set local role authenticated;
+  begin
+    update profiles set id = '00000000-0000-0000-0000-0000000000c2' where id = '00000000-0000-0000-0000-0000000000c3';
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  reset role;
+  perform t.fail_unless(msg = 'Profile id cannot be changed', 'manager id swap not blocked, got: ' || msg);
+  perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000c3') = 'owner', 'owner row moved');
+  perform t.fail_unless(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000c2'), 'swap target got a row');
+end $$;
+
+-- even an owner cannot change an id
+do $$
+declare msg text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+  set local role authenticated;
+  begin
+    update profiles set id = '00000000-0000-0000-0000-0000000000c2' where id = '00000000-0000-0000-0000-0000000000c4';
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  reset role;
+  perform t.fail_unless(msg = 'Profile id cannot be changed', 'owner id change not blocked, got: ' || msg);
+end $$;
+
+-- SQL editor (no JWT) may change an id
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '', true);
+  update profiles set id = '00000000-0000-0000-0000-0000000000c2' where id = '00000000-0000-0000-0000-0000000000c4';
+  perform t.fail_unless(exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000c2'), 'SQL-editor id change blocked');
+end $$;
+
 -- ─── 10. handle_new_user ignores the role in sign-up metadata ──────────────
 do $$
 declare uid uuid := gen_random_uuid();
