@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../../../css/material-log.css'
 import { useMaterialLog } from '../../../hooks/useMaterialLog'
+import { useAuth } from '../../../hooks/useAuth'
 import { buildSiteOptions, computeAmount, istDate, materialOptions, summarize } from '../../../lib/materialLog'
 import EntryForm from './EntryForm'
 import HistoryModal from './HistoryModal'
 import MaterialSummary from './MaterialSummary'
 import Modal from './Modal'
 import RecentLog from './RecentLog'
+
+/* Only admins and managers log entries or change them. Owners read the log. */
+const CAN_ENTER = new Set(['admin', 'manager'])
 
 const MIGRATION_FILE = 'supabase/migrations/20261113120000_material_log.sql'
 
@@ -34,6 +38,8 @@ function toFormInitial(entry, siteOptions) {
 
 export default function MaterialLog() {
   const log = useMaterialLog()
+  const { profile } = useAuth()
+  const canEnter = CAN_ENTER.has(profile?.role)
   const { status, error, entries, sites, layouts, reload, addEntry, updateEntry, deleteEntry, addSite, loadHistory } = log
 
   const [editing, setEditing] = useState(null)
@@ -138,17 +144,19 @@ export default function MaterialLog() {
 
   return (
     <div className="dash-ml-root">
-      <div className="dash-glass dash-ml-card">
-        <EntryForm
-          siteOptions={siteOptions}
-          materialOptions={materials}
-          today={today}
-          onSubmit={handleAdd}
-          onAddSite={addSite}
-        />
-      </div>
+      {canEnter && (
+        <div className="dash-glass dash-ml-card">
+          <EntryForm
+            siteOptions={siteOptions}
+            materialOptions={materials}
+            today={today}
+            onSubmit={handleAdd}
+            onAddSite={addSite}
+          />
+        </div>
+      )}
 
-      <MaterialSummary summary={summary} sites={sites} isEmpty={entries.length === 0} />
+      <MaterialSummary summary={summary} sites={sites} isEmpty={entries.length === 0} canEnter={canEnter} />
 
       {actionError && <div className="dash-ml-banner dash-ml-banner--error" role="alert">{actionError}</div>}
 
@@ -159,13 +167,15 @@ export default function MaterialLog() {
           siteOptions={siteOptions}
           highlightId={highlightId}
           today={today}
+          canEdit={canEnter}
+          defaultRange={canEnter ? 'all' : 'last7'}
           onEdit={setEditing}
           onDelete={handleDelete}
           onHistory={setHistoryFor}
         />
       </div>
 
-      {editing && (
+      {canEnter && editing && (
         <Modal title="Edit entry" onClose={closeEdit}>
           <EntryForm
             siteOptions={editOptions}

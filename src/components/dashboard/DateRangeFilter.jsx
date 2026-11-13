@@ -9,6 +9,11 @@ function shift(day, days) {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
 }
 
+/** First day of the last `n` days ending today (n = 7 gives today and the 6 days before). */
+export function lastNDaysFrom(today, n) {
+  return shift(today, -(n - 1))
+}
+
 function monthStart(day, monthsBack = 0) {
   const [y, m] = day.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1 - monthsBack, 1)).toISOString().slice(0, 10)

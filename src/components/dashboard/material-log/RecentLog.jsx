@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatINR, istDate, materialKey } from '../../../lib/materialLog'
-import DateRangeFilter from '../DateRangeFilter'
+import DateRangeFilter, { lastNDaysFrom, rangeLabel } from '../DateRangeFilter'
 
 const PAGE = 30
 const KIND_LABEL = { in: 'IN', out: 'OUT', note: 'NOTE' }
@@ -17,7 +17,7 @@ function whenLabel(entry, today) {
   return dateFormat.format(new Date(y, m - 1, d))
 }
 
-function RowMenu({ entry, onEdit, onDelete, onHistory }) {
+function RowMenu({ entry, canEdit, onEdit, onDelete, onHistory }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const btnRef = useRef(null)
@@ -54,29 +54,37 @@ function RowMenu({ entry, onEdit, onDelete, onHistory }) {
       </button>
       {open && (
         <div className="dash-ml-menu-list" role="menu">
-          <button type="button" role="menuitem" onClick={run(onEdit)}>
-            <span className="material-symbols-outlined">edit</span>Edit
-          </button>
+          {canEdit && (
+            <button type="button" role="menuitem" onClick={run(onEdit)}>
+              <span className="material-symbols-outlined">edit</span>Edit
+            </button>
+          )}
           <button type="button" role="menuitem" onClick={run(onHistory)}>
             <span className="material-symbols-outlined">history</span>History
           </button>
-          <button type="button" role="menuitem" className="is-danger" onClick={run(onDelete)}>
-            <span className="material-symbols-outlined">delete</span>Delete
-          </button>
+          {canEdit && (
+            <button type="button" role="menuitem" className="is-danger" onClick={run(onDelete)}>
+              <span className="material-symbols-outlined">delete</span>Delete
+            </button>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelete, onHistory, highlightId, today: todayProp }) {
+/**
+ * @param {{ canEdit?: boolean, defaultRange?: 'all' | 'last7' }} props
+ *   canEdit: false hides Edit and Delete (owners read the log only).
+ *   defaultRange: 'last7' opens on the latest 7 days; the date filter changes it.
+ */
+export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelete, onHistory, highlightId, today: todayProp, canEdit = true, defaultRange = 'all' }) {
   const [siteFilter, setSiteFilter] = useState('')
   const [materialFilter, setMaterialFilter] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [limit, setLimit] = useState(PAGE)
-
   const today = todayProp ?? istDate()
+  const [from, setFrom] = useState(() => (defaultRange === 'last7' ? lastNDaysFrom(today, 7) : ''))
+  const [to, setTo] = useState(() => (defaultRange === 'last7' ? today : ''))
+  const [limit, setLimit] = useState(PAGE)
   const siteName = useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites])
   const name = id => (id ? siteName.get(id) ?? 'Unknown site' : '')
 
@@ -106,6 +114,7 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
 
   const visible = filtered.slice(0, limit)
   const filtering = !!(siteFilter || materialFilter || from || to)
+  const rangeWords = rangeLabel(from, to, today)
 
   const confirmDelete = entry => {
     if (!window.confirm('Delete this entry? It is removed from the log and totals, and the change is kept in its history.')) return
@@ -141,7 +150,9 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
 
       {visible.length === 0 ? (
         <p className="dash-ml-muted dash-ml-recent-empty">
-          {filtering ? 'No entries match these filters.' : 'No entries yet. Log the first one above.'}
+          {filtering
+            ? (siteFilter || materialFilter ? 'No entries match these filters.' : `No entries in ${rangeWords === 'Any date' ? 'this range' : rangeWords}. Pick a wider date range to see older ones.`)
+            : canEdit ? 'No entries yet. Log the first one above.' : 'No entries yet.'}
         </p>
       ) : (
         <ul className="dash-ml-rows">
@@ -170,7 +181,7 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
                 </div>
                 <span className="dash-ml-row-amount">{e.kind === 'in' && e.amount != null ? formatINR(e.amount) : ''}</span>
                 <span className="dash-ml-row-by">{e.created_by_name || ''}</span>
-                <RowMenu entry={e} onEdit={onEdit} onDelete={confirmDelete} onHistory={onHistory} />
+                <RowMenu entry={e} canEdit={canEdit} onEdit={onEdit} onDelete={confirmDelete} onHistory={onHistory} />
               </li>
             )
           })}

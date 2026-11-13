@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { to: '/admin/documents', label: 'Documents', icon: 'description' },
 ]
 
+const ROLE_LABEL = { owner: 'Owner', admin: 'Administrator', manager: 'Manager' }
+
 export default function Sidebar() {
   const { signOut, profile } = useAuth()
   const navigate = useNavigate()
@@ -70,7 +72,7 @@ export default function Sidebar() {
           <div className="dash-sidebar-avatar">{initials}</div>
           <div className="dash-sidebar-profile-info">
             <span className="dash-sidebar-profile-name">{profile?.full_name ?? 'Admin'}</span>
-            <span className="dash-sidebar-profile-role">Administrator</span>
+            <span className="dash-sidebar-profile-role">{ROLE_LABEL[profile?.role] ?? 'Staff'}</span>
           </div>
           <button className="dash-sidebar-signout-icon" onClick={handleSignOut} title="Sign out">
             <span className="material-symbols-outlined" style={{ fontSize: '1.8rem' }}>logout</span>

@@ -3,7 +3,7 @@ import { formatINR, formatINRCompact } from '../../../lib/materialLog'
 
 const qtyFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 })
 
-export default function MaterialSummary({ summary, sites = [], isEmpty }) {
+export default function MaterialSummary({ summary, sites = [], isEmpty, canEnter = true }) {
   const [stockOpen, setStockOpen] = useState(false)
   const warehouse = sites.find(s => s.kind === 'warehouse' && !s.archived)
 
@@ -16,7 +16,9 @@ export default function MaterialSummary({ summary, sites = [], isEmpty }) {
   if (nothing) {
     return (
       <p className="dash-ml-summary-empty">
-        Nothing logged yet. Once you log a purchase, spend by day, site and material shows up here.
+        {canEnter
+          ? 'Nothing logged yet. Once you log a purchase, spend by day, site and material shows up here.'
+          : 'Nothing logged yet. Spend by day, site and material shows up here once your team logs purchases.'}
       </p>
     )
   }
