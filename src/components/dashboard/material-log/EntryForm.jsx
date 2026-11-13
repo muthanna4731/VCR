@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   UNITS, computeAmount, formatINR, istDate, materialKey, validateEntry,
 } from '../../../lib/materialLog'
@@ -13,7 +13,6 @@ const KINDS = [
 ]
 
 const UNIT_KEY = 'vcr.ml.unit.'
-const SITE_KEY = 'vcr.ml.site'
 
 function readStore(key) {
   try { return window.localStorage.getItem(key) } catch { return null }
@@ -40,20 +39,15 @@ function unitFor(material) {
   return readStore(UNIT_KEY + key) || defaultUnit(material)
 }
 
-function hasOption(options, value) {
-  return !!value && options.some(o => o.value === value)
-}
-
 function initialState({ initial, siteOptions, materialOptions }) {
   const warehouse = siteOptions.find(o => o.kind === 'warehouse')?.value ?? ''
-  const remembered = readStore(SITE_KEY)
   const material = initial?.material ?? ''
   return {
     kind: initial?.kind ?? 'in',
     material,
     otherMode: !!material && !materialOptions.includes(material),
-    siteValue: initial ? (initial.siteValue ?? '') : (hasOption(siteOptions, remembered) ? remembered : ''),
-    fromSiteValue: initial ? (initial.fromSiteValue ?? warehouse) : warehouse,
+    siteValue: initial?.siteValue ?? '',
+    fromSiteValue: initial?.fromSiteValue || warehouse,
     entryDate: initial?.entryDate ?? istDate(),
     quantity: initial?.quantity ?? '',
     unit: initial?.unit || unitFor(material),
@@ -66,16 +60,17 @@ function initialState({ initial, siteOptions, materialOptions }) {
 
 function Field({ label, error, className = '', children }) {
   return (
-    <label className={`ml-field ${className}`}>
-      <span className="ml-label">{label}</span>
+    <label className={`dash-ml-field ${className}`}>
+      <span className="dash-ml-label">{label}</span>
       {children}
-      {error && <span className="ml-error" role="alert">{error}</span>}
+      {error && <span className="dash-ml-error" role="alert">{error}</span>}
     </label>
   )
 }
 
 export default function EntryForm({ siteOptions, materialOptions, initial, onSubmit, onAddSite, onCancel }) {
   const editing = !!initial
+  const uid = useId()
   const [f, setF] = useState(() => initialState({ initial, siteOptions, materialOptions }))
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -161,7 +156,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
     setSiteError('')
     try {
       const site = await onAddSite(name)
-      set({ [newSite.target]: `site:${site.id}` })
+      set({ [newSite.target]: site.layout_id ? `layout:${site.layout_id}` : `site:${site.id}` })
       setNewSite(null)
     } catch (err) {
       setSiteError(err?.message || 'Could not add the site')
@@ -183,7 +178,6 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
     try {
       await onSubmit(payload)
       if (payload.material && payload.unit) writeStore(UNIT_KEY + materialKey(payload.material), payload.unit)
-      if (payload.siteValue && !editing) writeStore(SITE_KEY, payload.siteValue)
       if (!editing) {
         // Keep kind, site and date: people log several items for the same site in a row.
         setF(prev => ({
@@ -202,13 +196,13 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
   }
 
   const siteSelect = (target, label, error, extra) => (
-    <div className="ml-field">
-      <label className="ml-label" htmlFor={`ml-${target}`}>{label}</label>
+    <div className="dash-ml-field">
+      <label className="dash-ml-label" htmlFor={`${uid}-${target}`}>{label}</label>
       {newSite?.target === target ? (
-        <div className="ml-inline-add">
+        <div className="dash-ml-inline-add">
           <input
             ref={newSiteRef}
-            className="ml-input"
+            className="dash-ml-input"
             type="text"
             placeholder="New site name"
             aria-label="New site name"
@@ -216,20 +210,20 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
             onChange={e => setNewSite({ ...newSite, name: e.target.value })}
             onKeyDown={e => {
               if (e.key === 'Enter') { e.preventDefault(); addSite() }
-              if (e.key === 'Escape') setNewSite(null)
+              if (e.key === 'Escape') { e.stopPropagation(); setNewSite(null) }
             }}
           />
-          <button type="button" className="ml-btn ml-btn--solid" onClick={addSite} disabled={addingSite}>
+          <button type="button" className="dash-ml-btn dash-ml-btn--solid" onClick={addSite} disabled={addingSite}>
             {addingSite ? 'Adding…' : 'Add'}
           </button>
-          <button type="button" className="ml-btn ml-btn--quiet" onClick={() => setNewSite(null)} aria-label="Cancel new site">
+          <button type="button" className="dash-ml-btn dash-ml-btn--quiet" onClick={() => setNewSite(null)} aria-label="Cancel new site">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
       ) : (
         <select
-          id={`ml-${target}`}
-          className="ml-input"
+          id={`${uid}-${target}`}
+          className="dash-ml-input"
           value={f[target]}
           onChange={e => pickSite(target, e.target.value)}
           aria-invalid={!!error}
@@ -239,18 +233,18 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
           <option value={NEW_SITE}>+ New site…</option>
         </select>
       )}
-      {newSite?.target === target && siteError && <span className="ml-error" role="alert">{siteError}</span>}
-      {error && newSite?.target !== target && <span className="ml-error" role="alert">{error}</span>}
+      {newSite?.target === target && siteError && <span className="dash-ml-error" role="alert">{siteError}</span>}
+      {error && newSite?.target !== target && <span className="dash-ml-error" role="alert">{error}</span>}
     </div>
   )
 
   const materialField = (
-    <div className="ml-field">
-      <label className="ml-label" htmlFor="ml-material">Material</label>
+    <div className="dash-ml-field">
+      <label className="dash-ml-label" htmlFor={`${uid}-material`}>Material</label>
       <select
-        id="ml-material"
+        id={`${uid}-material`}
         ref={materialRef}
-        className="ml-input"
+        className="dash-ml-input"
         value={f.otherMode ? OTHER : f.material}
         onChange={e => pickMaterial(e.target.value)}
         aria-invalid={!!shown.material}
@@ -262,7 +256,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
       {f.otherMode && (
         <input
           ref={otherRef}
-          className="ml-input ml-input--stacked"
+          className="dash-ml-input dash-ml-input--stacked"
           type="text"
           placeholder="Material name"
           aria-label="Material name"
@@ -271,14 +265,14 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
           aria-invalid={!!shown.material}
         />
       )}
-      {shown.material && <span className="ml-error" role="alert">{shown.material}</span>}
+      {shown.material && <span className="dash-ml-error" role="alert">{shown.material}</span>}
     </div>
   )
 
   const dateField = (
     <Field label="Date" error={dateError}>
       <input
-        className="ml-input"
+        className="dash-ml-input"
         type="date"
         value={f.entryDate}
         onChange={e => set({ entryDate: e.target.value })}
@@ -287,12 +281,12 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
   )
 
   const quantityField = (
-    <div className="ml-field">
-      <label className="ml-label" htmlFor="ml-qty">Quantity</label>
-      <div className="ml-qty">
+    <div className="dash-ml-field">
+      <label className="dash-ml-label" htmlFor={`${uid}-qty`}>Quantity</label>
+      <div className="dash-ml-qty">
         <input
-          id="ml-qty"
-          className="ml-input"
+          id={`${uid}-qty`}
+          className="dash-ml-input"
           type="text"
           inputMode="decimal"
           placeholder="0"
@@ -301,7 +295,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
           aria-invalid={!!shown.quantity}
         />
         <select
-          className="ml-input"
+          className="dash-ml-input"
           aria-label="Unit"
           value={f.unit}
           onChange={e => set({ unit: e.target.value })}
@@ -309,22 +303,22 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
           {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </div>
-      {(shown.quantity || shown.unit) && <span className="ml-error" role="alert">{shown.quantity || shown.unit}</span>}
+      {(shown.quantity || shown.unit) && <span className="dash-ml-error" role="alert">{shown.quantity || shown.unit}</span>}
     </div>
   )
 
   return (
-    <form className={`ml-form ml-form--${f.kind}`} onSubmit={submit} noValidate>
-      <div className="ml-form-head">
-        {!editing && <h2 className="ml-title">Material log</h2>}
-        <div className="ml-kinds" role="group" aria-label="Entry type">
+    <form className={`dash-ml-form dash-ml-form--${f.kind}`} onSubmit={submit} noValidate>
+      <div className="dash-ml-form-head">
+        {!editing && <h2 className="dash-ml-title">Material log</h2>}
+        <div className="dash-ml-kinds" role="group" aria-label="Entry type">
           {KINDS.map(k => (
             <button
               key={k.value}
               type="button"
-              className={`ml-kind ml-kind--${k.value}`}
+              className={`dash-ml-kind dash-ml-kind--${k.value}`}
               aria-pressed={f.kind === k.value}
-              onClick={() => set({ kind: k.value })}
+              onClick={() => { set({ kind: k.value }); if (k.value === 'in' && (f.note.trim() || f.vendor.trim())) setShowMore(true) }}
             >
               {k.label}
             </button>
@@ -332,17 +326,17 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
         </div>
       </div>
 
-      <div className="ml-grid">
+      <div className="dash-ml-grid">
         {isIn && (<>
           {materialField}
           {siteSelect('siteValue', 'Site', shown.siteId)}
           {dateField}
           {quantityField}
           <Field label="Rate" error={shown.rate}>
-            <span className="ml-money">
-              <span className="ml-money-sign" aria-hidden="true">₹</span>
+            <span className="dash-ml-money">
+              <span className="dash-ml-money-sign" aria-hidden="true">₹</span>
               <input
-                className="ml-input"
+                className="dash-ml-input"
                 type="text"
                 inputMode="decimal"
                 placeholder="per unit"
@@ -353,10 +347,10 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
             </span>
           </Field>
           <Field label="Amount" error={shown.amount}>
-            <span className="ml-money">
-              <span className="ml-money-sign" aria-hidden="true">₹</span>
+            <span className="dash-ml-money">
+              <span className="dash-ml-money-sign" aria-hidden="true">₹</span>
               <input
-                className="ml-input"
+                className="dash-ml-input"
                 type="text"
                 inputMode="decimal"
                 placeholder={computed ? formatINR(computed).slice(1) : 'total'}
@@ -377,10 +371,10 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
         </>)}
 
         {isNote && (<>
-          <Field label="Note" error={shown.note} className="ml-span-all">
+          <Field label="Note" error={shown.note} className="dash-ml-span-all">
             <textarea
               ref={noteRef}
-              className="ml-input ml-textarea"
+              className="dash-ml-input dash-ml-textarea"
               rows={3}
               placeholder="Slab poured, Block A"
               value={f.note}
@@ -393,9 +387,9 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
         </>)}
 
         {isOut && (
-          <Field label="Note (optional)" error={shown.note} className="ml-span-all">
+          <Field label="Note (optional)" error={shown.note} className="dash-ml-span-all">
             <input
-              className="ml-input"
+              className="dash-ml-input"
               type="text"
               value={f.note}
               onChange={e => set({ note: e.target.value })}
@@ -406,11 +400,11 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
 
         {isIn && moreOpen && (<>
           <Field label="Vendor">
-            <input className="ml-input" type="text" value={f.vendor} onChange={e => set({ vendor: e.target.value })} />
+            <input className="dash-ml-input" type="text" value={f.vendor} onChange={e => set({ vendor: e.target.value })} />
           </Field>
-          <Field label="Note" error={shown.note} className="ml-span-2">
+          <Field label="Note" error={shown.note} className="dash-ml-span-2">
             <input
-              className="ml-input"
+              className="dash-ml-input"
               type="text"
               value={f.note}
               onChange={e => set({ note: e.target.value })}
@@ -420,15 +414,15 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
         </>)}
       </div>
 
-      {formError && <div className="ml-banner ml-banner--error" role="alert">{formError}</div>}
+      {formError && <div className="dash-ml-banner dash-ml-banner--error" role="alert">{formError}</div>}
 
-      <div className="ml-form-foot">
+      <div className="dash-ml-form-foot">
         {isIn && !moreOpen
-          ? <button type="button" className="ml-link" onClick={() => setShowMore(true)}>+ vendor / note</button>
+          ? <button type="button" className="dash-ml-link" onClick={() => setShowMore(true)}>+ vendor / note</button>
           : <span />}
-        <div className="ml-actions">
-          {onCancel && <button type="button" className="ml-btn ml-btn--quiet ml-btn--text" onClick={onCancel}>Cancel</button>}
-          <button type="submit" className="ml-btn ml-btn--solid ml-btn--log" disabled={submitting}>
+        <div className="dash-ml-actions">
+          {onCancel && <button type="button" className="dash-ml-btn dash-ml-btn--quiet dash-ml-btn--text" onClick={onCancel}>Cancel</button>}
+          <button type="submit" className="dash-ml-btn dash-ml-btn--solid dash-ml-btn--log" disabled={submitting}>
             {submitting ? 'Saving…' : editing ? 'Save changes' : 'Log'}
           </button>
         </div>

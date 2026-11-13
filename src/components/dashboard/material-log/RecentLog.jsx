@@ -19,6 +19,7 @@ function whenLabel(entry, today) {
 function RowMenu({ entry, onEdit, onDelete, onHistory }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const btnRef = useRef(null)
 
   useEffect(() => {
     if (!open) return undefined
@@ -34,13 +35,15 @@ function RowMenu({ entry, onEdit, onDelete, onHistory }) {
     }
   }, [open])
 
-  const run = fn => () => { setOpen(false); fn(entry) }
+  // Hand focus back to the trigger first, so a modal opened from here returns focus to it.
+  const run = fn => () => { btnRef.current?.focus(); setOpen(false); fn(entry) }
 
   return (
-    <div className="ml-menu" ref={ref}>
+    <div className="dash-ml-menu" ref={ref}>
       <button
+        ref={btnRef}
         type="button"
-        className="ml-menu-btn"
+        className="dash-ml-menu-btn"
         aria-label="Entry actions"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -49,7 +52,7 @@ function RowMenu({ entry, onEdit, onDelete, onHistory }) {
         <span className="material-symbols-outlined">more_horiz</span>
       </button>
       {open && (
-        <div className="ml-menu-list" role="menu">
+        <div className="dash-ml-menu-list" role="menu">
           <button type="button" role="menuitem" onClick={run(onEdit)}>
             <span className="material-symbols-outlined">edit</span>Edit
           </button>
@@ -65,14 +68,14 @@ function RowMenu({ entry, onEdit, onDelete, onHistory }) {
   )
 }
 
-export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelete, onHistory, highlightId }) {
+export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelete, onHistory, highlightId, today: todayProp }) {
   const [siteFilter, setSiteFilter] = useState('')
   const [materialFilter, setMaterialFilter] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [limit, setLimit] = useState(PAGE)
 
-  const today = istDate()
+  const today = todayProp ?? istDate()
   const siteName = useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites])
   const name = id => (id ? siteName.get(id) ?? 'Unknown site' : '')
 
@@ -109,22 +112,22 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
   }
 
   return (
-    <section className="ml-recent" aria-label="Recent entries">
-      <div className="ml-recent-head">
-        <h2 className="ml-title">Recent</h2>
-        <div className="ml-filters">
-          <select className="ml-input ml-input--filter" aria-label="Filter by site" value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+    <section className="dash-ml-recent" aria-label="Recent entries">
+      <div className="dash-ml-recent-head">
+        <h2 className="dash-ml-title">Recent</h2>
+        <div className="dash-ml-filters">
+          <select className="dash-ml-input dash-ml-input--filter" aria-label="Filter by site" value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
             <option value="">All sites</option>
             {siteOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <select className="ml-input ml-input--filter" aria-label="Filter by material" value={materialFilter} onChange={e => setMaterialFilter(e.target.value)}>
+          <select className="dash-ml-input dash-ml-input--filter" aria-label="Filter by material" value={materialFilter} onChange={e => setMaterialFilter(e.target.value)}>
             <option value="">All materials</option>
             {materials.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <input className="ml-input ml-input--filter" type="date" aria-label="From date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} />
-          <input className="ml-input ml-input--filter" type="date" aria-label="To date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} />
+          <input className="dash-ml-input dash-ml-input--filter" type="date" aria-label="From date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} />
+          <input className="dash-ml-input dash-ml-input--filter" type="date" aria-label="To date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} />
           {filtering && (
-            <button type="button" className="ml-link" onClick={() => { setSiteFilter(''); setMaterialFilter(''); setFrom(''); setTo('') }}>
+            <button type="button" className="dash-ml-link" onClick={() => { setSiteFilter(''); setMaterialFilter(''); setFrom(''); setTo('') }}>
               Clear filters
             </button>
           )}
@@ -132,11 +135,11 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
       </div>
 
       {visible.length === 0 ? (
-        <p className="ml-muted ml-recent-empty">
+        <p className="dash-ml-muted dash-ml-recent-empty">
           {filtering ? 'No entries match these filters.' : 'No entries yet. Log the first one above.'}
         </p>
       ) : (
-        <ul className="ml-rows">
+        <ul className="dash-ml-rows">
           {visible.map(e => {
             const isNote = e.kind === 'note'
             const qty = e.quantity !== null && e.quantity !== undefined && e.quantity !== ''
@@ -144,24 +147,24 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
               : ''
             const extra = [e.vendor, !isNote && e.note].filter(Boolean).join(' · ')
             return (
-              <li key={e.id} className={`ml-row${e.id === highlightId ? ' is-new' : ''}`}>
-                <span className="ml-row-when">{whenLabel(e, today)}</span>
-                <span className={`ml-badge ml-badge--${e.kind}`}>{KIND_LABEL[e.kind]}</span>
-                <div className="ml-row-main">
+              <li key={e.id} className={`dash-ml-row${e.id === highlightId ? ' is-new' : ''}`}>
+                <span className="dash-ml-row-when">{whenLabel(e, today)}</span>
+                <span className={`dash-ml-badge dash-ml-badge--${e.kind}`}>{KIND_LABEL[e.kind]}</span>
+                <div className="dash-ml-row-main">
                   {isNote ? (
-                    <span className="ml-row-title">{e.note}</span>
+                    <span className="dash-ml-row-title">{e.note}</span>
                   ) : (
-                    <span className="ml-row-title">{e.material}{qty && <span className="ml-row-qty"> {qty}</span>}</span>
+                    <span className="dash-ml-row-title">{e.material}{qty && <span className="dash-ml-row-qty"> {qty}</span>}</span>
                   )}
-                  <span className="ml-row-where">
+                  <span className="dash-ml-row-where">
                     {e.kind === 'out'
                       ? `${name(e.from_site_id) || 'Warehouse'} → ${name(e.site_id) || 'Unknown site'}`
                       : name(e.site_id)}
                   </span>
-                  {extra && <span className="ml-row-extra">{extra}</span>}
+                  {extra && <span className="dash-ml-row-extra">{extra}</span>}
                 </div>
-                <span className="ml-row-amount">{e.kind === 'in' && e.amount != null ? formatINR(e.amount) : ''}</span>
-                <span className="ml-row-by">{e.created_by_name || ''}</span>
+                <span className="dash-ml-row-amount">{e.kind === 'in' && e.amount != null ? formatINR(e.amount) : ''}</span>
+                <span className="dash-ml-row-by">{e.created_by_name || ''}</span>
                 <RowMenu entry={e} onEdit={onEdit} onDelete={confirmDelete} onHistory={onHistory} />
               </li>
             )
@@ -170,7 +173,7 @@ export default function RecentLog({ entries, sites, siteOptions, onEdit, onDelet
       )}
 
       {filtered.length > limit && (
-        <button type="button" className="ml-btn ml-btn--outline ml-more" onClick={() => setLimit(l => l + PAGE)}>
+        <button type="button" className="dash-ml-btn dash-ml-btn--outline dash-ml-more" onClick={() => setLimit(l => l + PAGE)}>
           Show more ({filtered.length - limit} older)
         </button>
       )}

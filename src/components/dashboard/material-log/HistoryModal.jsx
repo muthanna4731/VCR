@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatINR } from '../../../lib/materialLog'
 import Modal from './Modal'
 
 const HIDDEN = new Set(['id', 'created_at', 'updated_at', 'created_by', 'created_by_name'])
@@ -27,6 +28,7 @@ export default function HistoryModal({ entry, sites, loadHistory, onClose }) {
   const show = (field, v) => {
     if (v === null || v === undefined || v === '') return 'empty'
     if (field === 'site_id' || field === 'from_site_id') return siteName(v)
+    if (field === 'amount' || field === 'rate') return formatINR(v)
     return String(v)
   }
 
@@ -40,19 +42,19 @@ export default function HistoryModal({ entry, sites, loadHistory, onClose }) {
 
   return (
     <Modal title="Change history" onClose={onClose}>
-      {error && <div className="ml-banner ml-banner--error" role="alert">{error}</div>}
-      {!error && rows === null && <p className="ml-muted">Loading…</p>}
-      {rows && rows.length === 0 && <p className="ml-muted">No changes recorded for this entry.</p>}
+      {error && <div className="dash-ml-banner dash-ml-banner--error" role="alert">{error}</div>}
+      {!error && rows === null && <p className="dash-ml-muted">Loading…</p>}
+      {rows && rows.length === 0 && <p className="dash-ml-muted">No changes recorded for this entry.</p>}
       {rows && rows.length > 0 && (
-        <ol className="ml-history">
+        <ol className="dash-ml-history">
           {rows.map(row => (
             <li key={row.id}>
-              <div className="ml-history-head">
+              <div className="dash-ml-history-head">
                 <strong>{ACTIONS[row.action] ?? row.action}</strong>
                 <span>by {row.changed_by_name || 'Unknown'}, {when(row.changed_at)}</span>
               </div>
               {row.action === 'edit' && (
-                <ul className="ml-history-changes">
+                <ul className="dash-ml-history-changes">
                   {changes(row).map(c => <li key={c}>{c}</li>)}
                 </ul>
               )}
