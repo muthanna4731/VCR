@@ -168,8 +168,10 @@ export function buildSiteOptions(layouts, sites) {
 export function formatINR(n) {
   const num = Number(n)
   if (!Number.isFinite(num)) return '₹0'
-  const whole = Number.isInteger(Math.round(num * 100) / 100)
-  return '₹' + num.toLocaleString('en-IN', {
+  const rounded = Math.round(num * 100) / 100
+  if (rounded === 0) return '₹0' // also covers tiny negatives, which would print as -0
+  const whole = Number.isInteger(rounded)
+  return '₹' + rounded.toLocaleString('en-IN', {
     minimumFractionDigits: whole ? 0 : 2,
     maximumFractionDigits: whole ? 0 : 2,
   })
@@ -189,5 +191,8 @@ export function formatINRCompact(n) {
 export function isMissingTableError(err) {
   if (!err) return false
   if (['42P01', 'PGRST205', 'PGRST202'].includes(err.code)) return true
+  // Any other code (42703, PGRST204, ...) is a different error, even if its message mentions
+  // a relation or the schema cache. Only fall back to the message when there is no code.
+  if (err.code) return false
   return /(relation|table) .* does not exist|schema cache/i.test(err.message ?? '')
 }

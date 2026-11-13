@@ -254,6 +254,8 @@ describe('formatters', () => {
     expect(formatINR(1234.5)).toBe('₹1,234.50')
     expect(formatINR(0)).toBe('₹0')
     expect(formatINR(1234.001)).toBe('₹1,234')
+    expect(formatINR(-0.001)).toBe('₹0')
+    expect(formatINRCompact(-0.001)).toBe('₹0')
     expect(formatINR(NaN)).toBe('₹0')
     expect(formatINR(undefined)).toBe('₹0')
   })
@@ -280,6 +282,8 @@ describe('isMissingTableError', () => {
   it('ignores other errors', () => {
     expect(isMissingTableError({ code: '23505' })).toBe(false)
     expect(isMissingTableError({ code: '42703', message: 'column "foo" does not exist' })).toBe(false)
+    expect(isMissingTableError({ code: '42703', message: 'column "x" of relation "y" does not exist' })).toBe(false)
+    expect(isMissingTableError({ code: 'PGRST204', message: "Could not find the 'x' column of 'y' in the schema cache" })).toBe(false)
     expect(isMissingTableError(null)).toBe(false)
   })
 })
