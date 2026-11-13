@@ -5,6 +5,7 @@ import { computeAmount, isMissingTableError, istDate, parseNumber } from '../lib
 
 const PAGE_SIZE = 1000
 const UNIQUE_VIOLATION = '23505'
+const ENTRY_TIMEOUT_MESSAGE = 'No response from server — the entry may have saved. Check Recent before logging again.'
 
 const text = v => {
   if (v === null || v === undefined) return null
@@ -60,6 +61,13 @@ function toRow(form, siteId, fromSiteId) {
     rate: num(form.rate),
     amount: kind === 'in' ? computeAmount(form) : null,
     vendor: text(form.vendor),
+  }
+}
+
+// Two different options can resolve to the same site (e.g. a layout and its linked site).
+function assertDifferentSites(row) {
+  if (row.kind === 'out' && row.from_site_id && row.from_site_id === row.site_id) {
+    throw new Error('From and To must be different sites')
   }
 }
 
@@ -232,9 +240,10 @@ export function useMaterialLog() {
 
   const addEntry = useCallback(async form => {
     const row = await resolveForm(form)
+    assertDifferentSites(row)
     const { data } = await runSupabaseMutation(
       () => supabase.from('material_entries').insert(row).select().single(),
-      { label: 'Add material entry' }
+      { label: 'Add material entry', timeoutMessage: ENTRY_TIMEOUT_MESSAGE }
     )
     if (aliveRef.current) setEntries(prev => [data, ...prev].sort(byNewest))
     return data
@@ -248,6 +257,7 @@ export function useMaterialLog() {
         ?? sitesRef.current.find(s => s.kind === 'warehouse')
       if (warehouse) row.from_site_id = warehouse.id
     }
+    assertDifferentSites(row)
     const { data } = await runSupabaseMutation(
       () => supabase
         .from('material_entries')
@@ -256,7 +266,7 @@ export function useMaterialLog() {
         .is('deleted_at', null)
         .select()
         .single(),
-      { label: 'Update material entry' }
+      { label: 'Update material entry', timeoutMessage: ENTRY_TIMEOUT_MESSAGE }
     )
     if (aliveRef.current) setEntries(prev => prev.map(e => (e.id === id ? data : e)).sort(byNewest))
     return data

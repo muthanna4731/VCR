@@ -17,12 +17,12 @@ function isRetryableError(error) {
   )
 }
 
-async function withTimeout(task, timeoutMs, label) {
+async function withTimeout(task, timeoutMs, label, timeoutMessage) {
   let timeoutId
 
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`))
+      reject(new Error(timeoutMessage || `${label} timed out after ${timeoutMs}ms`))
     }, timeoutMs)
   })
 
@@ -39,13 +39,14 @@ export async function runSupabaseRequest(task, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     retries = DEFAULT_READ_RETRIES,
     retryDelayMs = 350,
+    timeoutMessage,
   } = options
 
   let lastError
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const result = await withTimeout(task, timeoutMs, label)
+      const result = await withTimeout(task, timeoutMs, label, timeoutMessage)
 
       if (result?.error) {
         throw result.error
@@ -70,6 +71,8 @@ export async function runSupabaseMutation(task, options = {}) {
   return runSupabaseRequest(task, {
     retries: 0,
     label: 'Supabase mutation',
+    // A timed-out write may still have reached the database, so don't say it failed.
+    timeoutMessage: 'No response from server — the change may have saved. Check before trying again.',
     ...options,
   })
 }
