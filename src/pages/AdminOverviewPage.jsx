@@ -117,7 +117,7 @@ export default function AdminOverviewPage() {
 
     async function load() {
       try {
-        const [layoutsRes, plotsRes, enquiriesRes, enquiryCountRes, plansRes] = await Promise.all([
+        const [layoutsRes, plotsRes, enquiriesRes, plansRes] = await Promise.all([
           runSupabaseRequest(
             () => supabase.from('site_layouts').select('id, name, is_published, layout_image_url, slug, cities(name)'),
             { label: 'Load admin layouts overview' }
@@ -135,10 +135,6 @@ export default function AdminOverviewPage() {
             { label: 'Load recent enquiries' }
           ),
           runSupabaseRequest(
-            () => supabase.from('enquiries').select('id', { count: 'exact', head: true }),
-            { label: 'Count enquiries' }
-          ),
-          runSupabaseRequest(
             () => supabase.from('payment_installments').select('status, due_date, amount, created_at'),
             { label: 'Load installment overview' }
           ),
@@ -149,7 +145,6 @@ export default function AdminOverviewPage() {
         const layouts      = layoutsRes.data ?? []
         const plots        = plotsRes.data ?? []
         const enquiries      = enquiriesRes.data ?? []
-        const enquiryTotal   = enquiryCountRes.count ?? 0
         const installments   = plansRes.data ?? []
 
         // Plot status counts
@@ -180,7 +175,6 @@ export default function AdminOverviewPage() {
         setData({
           layouts,
           enquiries,
-          enquiryTotal,
           statusCounts,
           total: plots.length,
           soldPct, bookedPct, availPct,
