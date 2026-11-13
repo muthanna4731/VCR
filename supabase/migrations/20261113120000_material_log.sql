@@ -37,7 +37,30 @@
 --       the real role afterwards and is unaffected.
 --   Nothing in src/ updates profiles.role or calls signUp.
 --
+-- Pre-flight: handle_new_user() below inserts role 'buyer'. If the live
+-- profiles_role_check does not allow 'buyer', every new sign-up would start
+-- failing after this migration "succeeds". So the very first statement aborts
+-- the whole migration with instructions when that is the case.
+--
 -- Run in: Supabase dashboard → SQL Editor. Safe to run more than once.
+
+-- ─── Pre-flight ────────────────────────────────────────────────────────────────
+
+DO $$
+DECLARE
+  def text;
+BEGIN
+  IF to_regclass('public.profiles') IS NULL THEN
+    RETURN;
+  END IF;
+  SELECT pg_get_constraintdef(c.oid) INTO def
+  FROM pg_constraint c
+  WHERE c.conrelid = 'public.profiles'::regclass AND c.conname = 'profiles_role_check';
+  -- No constraint at all: nothing can reject 'buyer'.
+  IF def IS NOT NULL AND def NOT LIKE '%buyer%' THEN
+    RAISE EXCEPTION $msg$profiles_role_check must allow 'buyer' before this migration runs (new sign-ups are created as 'buyer'). Current rule: %. Run first: ALTER TABLE public.profiles DROP CONSTRAINT profiles_role_check; ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('owner','manager','admin','buyer','agent')); (add any other roles already in use), then run this migration again.$msg$, def;
+  END IF;
+END $$;
 
 -- ─── Role lock ─────────────────────────────────────────────────────────────────
 
@@ -142,7 +165,11 @@ BEGIN
       NEW.created_by := auth.uid();
     END IF;
   ELSE
-    NEW.created_by := OLD.created_by;
+    -- Keep the creator, except when the profile was deleted (FK ON DELETE SET NULL
+    -- updates this row with created_by = null, and that must be allowed through).
+    IF NEW.created_by IS NOT NULL THEN
+      NEW.created_by := OLD.created_by;
+    END IF;
     NEW.created_at := OLD.created_at;
   END IF;
   RETURN NEW;
@@ -298,6 +325,10 @@ BEGIN
   ELSIF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
     act := 'delete';
   ELSE
+    -- A no-op save (same values; only updated_at moved) is not worth an audit row.
+    IF to_jsonb(OLD) - 'updated_at' = to_jsonb(NEW) - 'updated_at' THEN
+      RETURN NULL;
+    END IF;
     act := 'edit';
   END IF;
 

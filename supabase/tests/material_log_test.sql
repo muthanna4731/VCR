@@ -558,6 +558,38 @@ begin
     (select proconfig::text from pg_proc where oid = 'public.handle_new_user()'::regprocedure) like '%search_path=public%', 'handle_new_user search_path not pinned');
 end $$;
 
+-- ─── 10b. deleting a creator's profile still works (FK SET NULL vs the stamp trigger)
+do $$
+declare uid uuid := gen_random_uuid(); sid uuid;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values (uid, 'leaver@t', '{"full_name":"Lee Leaver"}');
+  insert into material_sites (name, created_by) values ('Orphan Site', uid) returning id into sid;
+  perform t.fail_unless((select created_by from material_sites where id = sid) = uid, 'setup: created_by not set');
+  delete from profiles where id = uid;
+  perform t.fail_unless((select created_by from material_sites where id = sid) is null, 'created_by not nulled when the profile was deleted');
+  perform t.fail_unless((select name from material_sites where id = sid) = 'Orphan Site', 'site lost');
+end $$;
+
+-- ─── 10c. a save that changes nothing writes no history row ─────────────────
+do $$
+declare eid uuid; n_before int; n_after int;
+begin
+  select id into eid from material_entries where material = 'Steel / TMT bars';
+  select count(*) into n_before from material_entry_history where entry_id = eid;
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+  set local role authenticated;
+  update material_entries set amount = amount, note = note where id = eid;
+  reset role;
+  select count(*) into n_after from material_entry_history where entry_id = eid;
+  perform t.fail_unless(n_after = n_before, 'no-op update wrote a history row');
+
+  set local role authenticated;
+  update material_entries set amount = amount + 1 where id = eid;
+  reset role;
+  select count(*) into n_after from material_entry_history where entry_id = eid;
+  perform t.fail_unless(n_after = n_before + 1, 'real edit did not write a history row');
+end $$;
+
 -- ─── 11. migration is idempotent ───────────────────────────────────────────
 \i supabase/migrations/20261113120000_material_log.sql
 
