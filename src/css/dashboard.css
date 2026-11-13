@@ -328,7 +328,6 @@
     background: rgba(255, 67, 58, 0.1);
 }
 
-
 /* ─── Main content ─── */
 .dash-main {
     flex: 1;
@@ -579,62 +578,6 @@
 
 .dash-section-link:hover {
     text-decoration: underline;
-}
-
-/* ─── Overview: Hero stats row ─── */
-.dash-hero-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 2.4rem;
-    margin-bottom: 2.4rem;
-}
-
-.dash-hero-card {
-    padding: 2.4rem;
-}
-
-.dash-hero-card-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.2rem;
-}
-
-.dash-hero-label {
-    font-size: 1.1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(0, 0, 0, 0.4);
-    font-family: var(--font-label);
-}
-
-.dash-hero-icon {
-    color: var(--dash-primary);
-    font-size: 2rem;
-}
-
-.dash-hero-value {
-    font-size: 2.8rem;
-    font-weight: 700;
-    font-family: var(--font-headline);
-    color: var(--dash-text);
-    line-height: 1.1;
-}
-
-.dash-hero-trend {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #16a34a;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-top: 0.8rem;
-}
-
-.dash-hero-trend--muted {
-    color: rgba(0, 0, 0, 0.4);
-    font-weight: 500;
 }
 
 .dash-progress-track {
@@ -2903,9 +2846,6 @@
     }
 
     /* Overview page responsive */
-    .dash-hero-stats    { grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.6rem; }
-    .dash-hero-card     { padding: 1.6rem; }
-    .dash-hero-value    { font-size: 2.2rem; }
     .dash-charts-grid   { grid-template-columns: 1fr; }
     .dash-projects-grid { grid-template-columns: 1fr 1fr; gap: 1.6rem; }
     .dash-leads-header  { flex-direction: column; align-items: flex-start; }
@@ -2953,7 +2893,6 @@
 
 @media (max-width: 480px) {
     .dash-projects-grid { grid-template-columns: 1fr; }
-    .dash-hero-stats    { grid-template-columns: 1fr 1fr; }
 }
 
 /* ============================================================
@@ -2968,45 +2907,9 @@
         padding: 4rem 4.8rem 6rem;
     }
 
-    /* ─── Hero stat cards ─── */
-    .dash-hero-stats {
-        gap: 3.2rem;
-        margin-bottom: 3.6rem;
-    }
-
-    .dash-hero-card {
-        padding: 3.2rem;
-    }
-
-    .dash-hero-label {
-        font-size: 1.4rem;
-        letter-spacing: 0.12em;
-    }
-
-    .dash-hero-icon {
-        font-size: 2.8rem;
-    }
-
-    .dash-hero-value {
-        font-size: 4rem;
-    }
-
-    .dash-hero-trend {
-        font-size: 1.4rem;
-        margin-top: 1.2rem;
-    }
-
-    .dash-hero-trend .material-symbols-outlined {
-        font-size: 1.8rem !important;
-    }
-
     .dash-progress-track {
         height: 0.8rem;
         margin-top: 2rem;
-    }
-
-    .dash-hero-card-head {
-        margin-bottom: 1.6rem;
     }
 
     /* ─── Charts grid ─── */

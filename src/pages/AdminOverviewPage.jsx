@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { runSupabaseRequest, runSupabaseMutation } from '../lib/supabaseRequest'
+import MaterialLog from '../components/dashboard/material-log/MaterialLog'
 
 const CHANNEL_OPTIONS = [
   { value: 'website',    label: 'Website' },
@@ -200,11 +201,11 @@ export default function AdminOverviewPage() {
     return () => { cancelled = true }
   }, [])
 
-  if (loading) return <div className="dash-page"><div className="dash-loading-inline">Loading…</div></div>
-  if (error)   return <div className="dash-page"><p className="dash-error">{error}</p></div>
+  if (loading) return <div className="dash-page"><MaterialLog /><div className="dash-loading-inline">Loading…</div></div>
+  if (error)   return <div className="dash-page"><MaterialLog /><p className="dash-error">{error}</p></div>
 
   const {
-    layouts, enquiries, enquiryTotal, statusCounts, total,
+    layouts, enquiries, statusCounts, total,
     soldPct, bookedPct, availPct,
     soldArc, bookedArc, availArc,
     revenueCollected, revenuePending,
@@ -213,9 +214,6 @@ export default function AdminOverviewPage() {
 
   const { monthLabels, monthValues, chartMax } =
     computeRevenueChart(allInstallments, revenueRange, customFrom, customTo)
-
-  const totalPortfolio = revenueCollected + revenuePending
-  const inventorySoldPct = total > 0 ? Math.round((statusCounts.sold / total) * 100) : 0
 
   const filtered = search.trim()
     ? enquiries.filter(e =>
@@ -274,58 +272,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="dash-page">
 
-      {/* ── Hero stats row ── */}
-      <div className="dash-hero-stats">
-        {/* Portfolio Value */}
-        <div className="dash-glass dash-hero-card">
-          <div className="dash-hero-card-head">
-            <span className="dash-hero-label">Portfolio Value</span>
-            <span className="material-symbols-outlined dash-hero-icon">account_balance_wallet</span>
-          </div>
-          <div className="dash-hero-value">{formatCurrency(totalPortfolio)}</div>
-          <div className="dash-hero-trend">
-            <span className="material-symbols-outlined" style={{ fontSize: '1.4rem' }}>trending_up</span>
-            {formatCurrency(revenueCollected)} collected
-          </div>
-        </div>
-
-        {/* Inventory Sold */}
-        <div className="dash-glass dash-hero-card">
-          <div className="dash-hero-card-head">
-            <span className="dash-hero-label">Inventory Sold</span>
-            <span className="material-symbols-outlined dash-hero-icon">sell</span>
-          </div>
-          <div className="dash-hero-value">{inventorySoldPct}%</div>
-          <div className="dash-progress-track">
-            <div className="dash-progress-fill" style={{ width: `${inventorySoldPct}%` }} />
-          </div>
-        </div>
-
-        {/* Active Enquiries */}
-        <div className="dash-glass dash-hero-card">
-          <div className="dash-hero-card-head">
-            <span className="dash-hero-label">Active Enquiries</span>
-            <span className="material-symbols-outlined dash-hero-icon">groups</span>
-          </div>
-          <div className="dash-hero-value">{enquiryTotal}</div>
-          <div className="dash-hero-trend">
-            <span className="material-symbols-outlined" style={{ fontSize: '1.4rem' }}>bolt</span>
-            {statusCounts.negotiation} in negotiation
-          </div>
-        </div>
-
-        {/* Pending Closures */}
-        <div className="dash-glass dash-hero-card">
-          <div className="dash-hero-card-head">
-            <span className="dash-hero-label">Pending Closures</span>
-            <span className="material-symbols-outlined dash-hero-icon">handshake</span>
-          </div>
-          <div className="dash-hero-value">{statusCounts.booked}</div>
-          <div className="dash-hero-trend dash-hero-trend--muted">
-            Est. {formatCurrency(revenuePending)}
-          </div>
-        </div>
-      </div>
+      <MaterialLog />
 
       {/* ── Charts row ── */}
       <div className="dash-charts-grid">
