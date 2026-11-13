@@ -68,7 +68,14 @@ function Field({ label, error, className = '', children }) {
   )
 }
 
-export default function EntryForm({ siteOptions, materialOptions, initial, onSubmit, onAddSite, onCancel }) {
+// '2026-11-12' -> '12 Nov'
+function shortDate(iso) {
+  const [y, m, d] = String(iso).split('-').map(Number)
+  if (!y || !m || !d) return iso
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
+export default function EntryForm({ siteOptions, materialOptions, initial, today, onSubmit, onAddSite, onCancel }) {
   const editing = !!initial
   const uid = useId()
   const [f, setF] = useState(() => initialState({ initial, siteOptions, materialOptions }))
@@ -79,6 +86,8 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
   const [newSite, setNewSite] = useState(null) // { target: 'siteValue' | 'fromSiteValue', name }
   const [addingSite, setAddingSite] = useState(false)
   const [siteError, setSiteError] = useState('')
+  const [dateTouched, setDateTouched] = useState(false)
+  const [loggedFor, setLoggedFor] = useState('')
 
   const materialRef = useRef(null)
   const otherRef = useRef(null)
@@ -88,6 +97,18 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
   const submitLock = useRef(false)
 
   const set = patch => setF(prev => ({ ...prev, ...patch }))
+
+  // A new-entry form that was left open past midnight follows today's date until
+  // the user picks a date themselves. Edit forms keep the entry's own date.
+  useEffect(() => {
+    if (!editing && !dateTouched && today) setF(prev => (prev.entryDate === today ? prev : { ...prev, entryDate: today }))
+  }, [editing, dateTouched, today])
+
+  useEffect(() => {
+    if (!loggedFor) return undefined
+    const timer = setTimeout(() => setLoggedFor(''), 5000)
+    return () => clearTimeout(timer)
+  }, [loggedFor])
 
   useEffect(() => {
     if (f.otherMode && focusOther.current) {
@@ -170,6 +191,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
     if (submitLock.current) return
     setAttempted(true)
     setFormError('')
+    setLoggedFor('')
     if (newSite) { setSiteError('Add the new site first, or choose another'); return }
     if (Object.keys(errors).length > 0 || !f.entryDate) return
 
@@ -179,6 +201,8 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
       await onSubmit(payload)
       if (payload.material && payload.unit) writeStore(UNIT_KEY + materialKey(payload.material), payload.unit)
       if (!editing) {
+        // A back-dated entry lands further down Recent: say so, so it doesn't look like it failed.
+        if (payload.entryDate !== (today || istDate())) setLoggedFor(payload.entryDate)
         // Keep kind, site and date: people log several items for the same site in a row.
         setF(prev => ({
           ...prev, material: '', otherMode: false, quantity: '', rate: '', amount: '', vendor: '', note: '',
@@ -275,7 +299,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
         className="dash-ml-input"
         type="date"
         value={f.entryDate}
-        onChange={e => set({ entryDate: e.target.value })}
+        onChange={e => { setDateTouched(!today || e.target.value !== today); set({ entryDate: e.target.value }) }}
       />
     </Field>
   )
@@ -415,6 +439,7 @@ export default function EntryForm({ siteOptions, materialOptions, initial, onSub
       </div>
 
       {formError && <div className="dash-ml-banner dash-ml-banner--error" role="alert">{formError}</div>}
+      {loggedFor && !formError && <div className="dash-ml-banner dash-ml-banner--ok" role="status">Logged for {shortDate(loggedFor)}</div>}
 
       <div className="dash-ml-form-foot">
         {isIn && !moreOpen

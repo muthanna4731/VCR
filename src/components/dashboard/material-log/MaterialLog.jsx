@@ -142,6 +142,7 @@ export default function MaterialLog() {
         <EntryForm
           siteOptions={siteOptions}
           materialOptions={materials}
+          today={today}
           onSubmit={handleAdd}
           onAddSite={addSite}
         />
