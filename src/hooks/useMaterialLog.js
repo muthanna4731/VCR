@@ -182,16 +182,41 @@ export function useMaterialLog() {
 
     const layout = layoutsRef.current.find(l => l.id === id)
     if (!layout) throw new Error('That layout no longer exists')
-    const { data } = await runSupabaseMutation(
-      () => supabase
-        .from('material_sites')
-        .upsert({ name: layout.name, layout_id: id }, { onConflict: 'layout_id' })
-        .select()
-        .single(),
-      { label: 'Link layout as material site' }
-    )
-    upsertLocalSite(data)
-    return data.id
+    try {
+      const { data } = await runSupabaseMutation(
+        () => supabase
+          .from('material_sites')
+          .upsert({ name: layout.name, layout_id: id }, { onConflict: 'layout_id' })
+          .select()
+          .single(),
+        { label: 'Link layout as material site' }
+      )
+      upsertLocalSite(data)
+      return data.id
+    } catch (err) {
+      if (err?.code !== UNIQUE_VIOLATION) throw err
+      // The name index tripped: a live site with this name already exists.
+      const key = layout.name.trim().toLowerCase()
+      let clash = sitesRef.current.find(s => !s.archived && s.name.trim().toLowerCase() === key)
+      if (!clash) {
+        const res = await runSupabaseRequest(
+          () => supabase.from('material_sites').select('*').eq('archived', false).ilike('name', layout.name.trim().replace(/[\\%_]/g, '\\$&')).limit(1).maybeSingle(),
+          { label: 'Find existing material site' }
+        )
+        clash = res.data
+      }
+      if (!clash) throw err
+      if (clash.layout_id === id) { upsertLocalSite(clash); return clash.id }
+      if (clash.layout_id) {
+        throw new Error(`A site named "${layout.name}" already exists for another project`)
+      }
+      const { data } = await runSupabaseMutation(
+        () => supabase.from('material_sites').update({ layout_id: id }).eq('id', clash.id).select().single(),
+        { label: 'Link existing site to layout' }
+      )
+      upsertLocalSite(data)
+      return data.id
+    }
   }, [upsertLocalSite])
 
   const resolveForm = useCallback(async form => {
