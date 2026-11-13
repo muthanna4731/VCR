@@ -53,73 +53,104 @@
     to { transform: rotate(360deg); }
 }
 
-/* ─── Login Page ─── */
+/* ─── Login Page ───
+   White page on the same sky-blue glow as the home intro counter, so the
+   app opens in the site's colour. Logo centred, one quiet column below. */
 .dash-login-page {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #f0f7ff 0%, #fff 40%, #f5f7fa 100%);
+    gap: 3.2rem;
+    padding: 4rem 1.6rem;
+    background:
+        radial-gradient(ellipse 70% 60% at 50% 42%, #b5d1ea 0%, rgba(181, 209, 234, 0.5) 45%, rgba(255, 255, 255, 0) 100%),
+        #fff;
     font-family: var(--font-primary);
-    padding: 2rem;
+    color: #151717;
 }
 
 .dash-login-card {
-    background: var(--dash-glass-bg);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 1px solid var(--dash-glass-border);
-    border-radius: 1.6rem;
-    padding: 4.8rem 3.6rem;
     width: 100%;
-    max-width: 55rem;
-    max-height: 90vh;
-    box-shadow: var(--dash-glass-shadow), inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 1px rgba(255, 255, 255, 0.3);
+    max-width: 42rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 4.4rem 3.6rem 3.6rem;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 2.4rem;
+    box-shadow: 0 24px 60px -24px rgba(4, 110, 188, 0.28);
 }
 
-.dash-login-brand {
-    display: inline-block;
-    font-size: 1.3rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #046ebc;
-    background: #f0f7ff;
-    border: 1px solid rgba(4, 110, 188, 0.15);
-    border-radius: 100px;
-    padding: 0.5rem 1.4rem;
-    margin-bottom: 2.4rem;
+.dash-login-logo {
+    display: block;
+    width: 22rem;
+    height: auto;
+    margin: 0 auto 3.2rem;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .dash-login-title {
     font-size: 3.2rem;
-    font-weight: 700;
-    color: #151717;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.03em;
     line-height: 1.1;
-    margin-bottom: 0.6rem;
+    margin: 0 0 0.8rem;
+    color: #151717;
 }
 
 .dash-login-subtitle {
     font-size: 1.5rem;
-    color: #8e8e93;
-    margin-bottom: 3.6rem;
+    line-height: 1.45;
+    color: #6e6e73;
+    margin: 0 0 3.2rem;
+    max-width: 30rem;
+}
+
+.dash-login-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+    text-align: left;
+}
+
+.dash-login-form .dash-form-label {
+    font-size: 1.4rem;
     font-weight: 500;
+    color: #3a3a3c;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.dash-login-form .dash-form-input {
+    padding: 1.4rem 1.6rem;
+    font-size: 1.6rem;
+    border-radius: 1.2rem;
+    border-color: #dcdfe4;
 }
 
 .dash-login-error {
-    font-size: 1.3rem;
-    color: #ff3b30;
+    font-size: 1.4rem;
+    color: #c0271d;
     background: #fff1f0;
     border: 1px solid #ffccc7;
-    border-radius: 0.6rem;
+    border-radius: 1rem;
     padding: 1rem 1.4rem;
-    margin-bottom: 1.6rem;
+    margin: 0;
 }
 
 .dash-login-btn {
     width: 100%;
-    padding: 1.4rem;
+    padding: 1.5rem;
+    margin-top: 0.8rem;
     background: #046ebc;
     color: #fff;
     border: none;
@@ -128,17 +159,49 @@
     font-size: 1.6rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.18s;
-    margin-top: 0.8rem;
+    transition: background 0.18s, transform 0.18s;
 }
 
 .dash-login-btn:hover {
     background: #035aa0;
 }
 
+.dash-login-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.dash-login-btn:focus-visible,
+.dash-login-back:focus-visible {
+    outline: 2px solid #046ebc;
+    outline-offset: 3px;
+}
+
 .dash-login-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+.dash-login-back {
+    font-size: 1.4rem;
+    color: #3a3a3c;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(21, 23, 23, 0.2);
+    padding-bottom: 0.2rem;
+}
+
+.dash-login-back:hover {
+    color: #046ebc;
+    border-color: currentColor;
+}
+
+@media (max-width: 480px) {
+    .dash-login-card {
+        padding: 3.6rem 2.2rem 2.8rem;
+        border-radius: 2rem;
+    }
+    .dash-login-logo {
+        width: 15rem;
+    }
 }
 
 /* ─── Dashboard shell ─── */

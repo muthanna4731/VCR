@@ -106,7 +106,8 @@
 .arrows-section-root {
     position: relative;
     padding: 4rem 0;
-    background-color: #fff
+    background-color: #fff;
+    overflow-x: clip /* the logo glow is wider than phones */
 }
 
 @media(min-width:768px) {
@@ -212,7 +213,24 @@
 }
 
 /* ── Logo window (new VCR section treatment) ── */
+/* Same sky-blue glow the intro counter sits on (index.html .intro), so the
+   see-through logo floats on the hero's sky colour. */
+.vcr-container::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140%;
+    height: 180%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse 50% 50% at 50% 50%, #b5d1ea 0%, rgba(181, 209, 234, 0.55) 45%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
 .vcr-logo-window {
+    position: relative;
+    z-index: 1;
     width: 29.9rem;           /* matches 3 × 9.3rem + 2 × 1rem gap (mobile) */
     aspect-ratio: 1029 / 551; /* logo natural ratio */
     overflow: hidden;

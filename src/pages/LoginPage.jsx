@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import '../css/dashboard.css'
 import useDocumentTitle from '../hooks/useDocumentTitle'
+import vcrLogo from '../images/VCR Logo-optimized.webp'
 
 function isStaffRole(role) {
   return ['admin', 'owner', 'manager'].includes(role)
@@ -82,11 +83,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="dash-login-page">
+    <main className="dash-login-page">
       <div className="dash-login-card">
-        <div className="dash-login-brand">VCR Builders and Developers</div>
-        <h1 className="dash-login-title">Admin Sign In</h1>
-        <p className="dash-login-subtitle">VCR Builders &amp; Developers</p>
+        <img
+          src={vcrLogo}
+          alt="VCR Developers"
+          className="dash-login-logo"
+          width="1029"
+          height="551"
+          decoding="async"
+        />
+        <h1 className="dash-login-title">Sign in</h1>
+        <p className="dash-login-subtitle">Use the name and password your admin set up for you.</p>
 
         <form className="dash-login-form" onSubmit={handleSubmit} noValidate>
           <div className="dash-form-group">
@@ -124,6 +132,8 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-    </div>
+
+      <a className="dash-login-back" href="/">Back to vcrdevelopers.in</a>
+    </main>
   )
 }
