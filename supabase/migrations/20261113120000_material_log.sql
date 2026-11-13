@@ -24,8 +24,9 @@
 --       caller is the database itself (auth.uid() is null: the SQL editor, the
 --       service role, and the SECURITY DEFINER admin_create_staff) or an owner;
 --     - replaces handle_new_user() so it ignores raw_user_meta_data->>'role'.
---       The insert omits role, so the column default applies; admin_create_staff
---       sets the real role afterwards and is unaffected.
+--       New auth users start as 'buyer' (never staff, even on self sign-up);
+--       set staff roles via the SQL editor or admin_create_staff, which sets
+--       the real role afterwards and is unaffected.
 --   Nothing in src/ updates profiles.role or calls signUp.
 --
 -- Run in: Supabase dashboard → SQL Editor. Safe to run more than once.
@@ -39,10 +40,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- role deliberately omitted: the column default applies. Never trust
-  -- raw_user_meta_data->>'role' (the client controls it at sign-up).
-  INSERT INTO public.profiles (id, full_name)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''));
+  -- Fail closed: every new auth user starts as 'buyer', never staff. Never
+  -- trust raw_user_meta_data->>'role' (the client controls it at sign-up).
+  -- The column default ('manager') is left alone: other inserts may rely on it.
+  INSERT INTO public.profiles (id, full_name, role)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''), 'buyer');
   RETURN NEW;
 END;
 $$;

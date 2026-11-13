@@ -398,7 +398,10 @@ begin
   insert into auth.users (id, email, raw_user_meta_data)
   values (uid, 'selfsignup@t', '{"full_name":"Sneaky Signup","role":"owner"}');
   perform t.fail_unless((select role from profiles where id = uid) is distinct from 'owner', 'sign-up metadata granted owner');
-  perform t.fail_unless((select role from profiles where id = uid) = 'manager', 'column default did not apply');
+  perform t.fail_unless((select role from profiles where id = uid) = 'buyer', 'sign-up with metadata role=owner did not start as buyer');
+  perform set_config('request.jwt.claim.sub', uid::text, true);
+  perform t.fail_unless(public.is_staff() is false, 'self sign-up passes is_staff()');
+  perform set_config('request.jwt.claim.sub', '', true);
   perform t.fail_unless((select full_name from profiles where id = uid) = 'Sneaky Signup', 'full_name not copied');
   perform t.fail_unless(
     (select prosecdef from pg_proc where oid = 'public.handle_new_user()'::regprocedure), 'handle_new_user not security definer');
