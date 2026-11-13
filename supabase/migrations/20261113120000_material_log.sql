@@ -20,9 +20,14 @@
 --   has no column limit), and handle_new_user copied role from sign-up
 --   metadata. Either lets a buyer or agent make themselves owner and read the
 --   cost log. So this migration also:
---     - adds trigger profiles_role_guard: a role change is rejected unless the
---       caller is the database itself (auth.uid() is null: the SQL editor, the
---       service role, and the SECURITY DEFINER admin_create_staff) or an owner;
+--     - adds trigger profiles_role_guard on INSERT and UPDATE OF role. An update
+--       that changes the role, or an insert with any role other than 'buyer',
+--       is rejected unless auth.uid() is null or the caller is an owner.
+--       auth.uid() is null in the SQL editor and for the service role (its JWT
+--       has no sub), which is the only role allowed to call admin_create_staff,
+--       and for GoTrue's own insert into auth.users (handle_new_user). Covering
+--       INSERT matters: profiles_self_insert and admins_manage_profiles would
+--       otherwise let someone delete a profile row and re-insert it as owner;
 --     - replaces handle_new_user() so it ignores raw_user_meta_data->>'role'.
 --       New auth users start as 'buyer' (never staff, even on self sign-up);
 --       set staff roles via the SQL editor or admin_create_staff, which sets
@@ -55,8 +60,16 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  changing boolean;
 BEGIN
-  IF NEW.role IS DISTINCT FROM OLD.role
+  IF TG_OP = 'INSERT' THEN
+    changing := NEW.role IS DISTINCT FROM 'buyer';
+  ELSE
+    changing := NEW.role IS DISTINCT FROM OLD.role;
+  END IF;
+
+  IF changing
      AND auth.uid() IS NOT NULL
      AND NOT EXISTS (
        SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'owner'
@@ -70,7 +83,7 @@ $$;
 
 DROP TRIGGER IF EXISTS profiles_role_guard ON public.profiles;
 CREATE TRIGGER profiles_role_guard
-  BEFORE UPDATE OF role ON public.profiles
+  BEFORE INSERT OR UPDATE OF role ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.profiles_role_guard();
 
 -- ─── Staff helper ──────────────────────────────────────────────────────────────
@@ -108,6 +121,30 @@ CREATE TABLE IF NOT EXISTS public.material_sites (
 CREATE UNIQUE INDEX IF NOT EXISTS material_sites_name_lower_uniq
   ON public.material_sites (lower(name)) WHERE NOT archived;
 
+-- created_by comes from the JWT, never from the client, and cannot be rewritten.
+CREATE OR REPLACE FUNCTION public.material_sites_stamp()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF auth.uid() IS NOT NULL THEN
+      NEW.created_by := auth.uid();
+    END IF;
+  ELSE
+    NEW.created_by := OLD.created_by;
+    NEW.created_at := OLD.created_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS material_sites_stamp ON public.material_sites;
+CREATE TRIGGER material_sites_stamp
+  BEFORE INSERT OR UPDATE ON public.material_sites
+  FOR EACH ROW EXECUTE FUNCTION public.material_sites_stamp();
+
 CREATE TABLE IF NOT EXISTS public.material_entries (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   kind            text        NOT NULL CHECK (kind IN ('in', 'out', 'note')),
@@ -144,7 +181,11 @@ CREATE TABLE IF NOT EXISTS public.material_entries (
     )
   ),
   CONSTRAINT material_entries_note_rules CHECK (
-    kind <> 'note' OR (note IS NOT NULL AND btrim(note) <> '')
+    kind <> 'note' OR (note IS NOT NULL AND btrim(note) <> '' AND material IS NULL)
+  ),
+  -- from_site_id is for Out entries only
+  CONSTRAINT material_entries_from_site_out_only CHECK (
+    kind = 'out' OR from_site_id IS NULL
   ),
   -- "Miscellaneous" needs a short description, whatever the kind
   CONSTRAINT material_entries_misc_needs_note CHECK (
@@ -210,6 +251,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.material_entries_before_update()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   NEW.updated_at      := now();
@@ -289,23 +331,23 @@ DROP POLICY IF EXISTS material_sites_select ON public.material_sites;
 DROP POLICY IF EXISTS material_sites_insert ON public.material_sites;
 DROP POLICY IF EXISTS material_sites_update ON public.material_sites;
 CREATE POLICY material_sites_select ON public.material_sites
-  FOR SELECT TO authenticated USING (public.is_staff());
+  FOR SELECT TO authenticated USING ((SELECT public.is_staff()));
 CREATE POLICY material_sites_insert ON public.material_sites
-  FOR INSERT TO authenticated WITH CHECK (public.is_staff());
+  FOR INSERT TO authenticated WITH CHECK ((SELECT public.is_staff()));
 CREATE POLICY material_sites_update ON public.material_sites
-  FOR UPDATE TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  FOR UPDATE TO authenticated USING ((SELECT public.is_staff())) WITH CHECK ((SELECT public.is_staff()));
 
 DROP POLICY IF EXISTS material_entries_select ON public.material_entries;
 DROP POLICY IF EXISTS material_entries_insert ON public.material_entries;
 DROP POLICY IF EXISTS material_entries_update ON public.material_entries;
 CREATE POLICY material_entries_select ON public.material_entries
-  FOR SELECT TO authenticated USING (public.is_staff());
+  FOR SELECT TO authenticated USING ((SELECT public.is_staff()));
 CREATE POLICY material_entries_insert ON public.material_entries
-  FOR INSERT TO authenticated WITH CHECK (public.is_staff());
+  FOR INSERT TO authenticated WITH CHECK ((SELECT public.is_staff()));
 CREATE POLICY material_entries_update ON public.material_entries
-  FOR UPDATE TO authenticated USING (public.is_staff()) WITH CHECK (public.is_staff());
+  FOR UPDATE TO authenticated USING ((SELECT public.is_staff())) WITH CHECK ((SELECT public.is_staff()));
 
 -- History: select only. Written by material_entries_audit() (SECURITY DEFINER).
 DROP POLICY IF EXISTS material_entry_history_select ON public.material_entry_history;
 CREATE POLICY material_entry_history_select ON public.material_entry_history
-  FOR SELECT TO authenticated USING (public.is_staff());
+  FOR SELECT TO authenticated USING ((SELECT public.is_staff()));

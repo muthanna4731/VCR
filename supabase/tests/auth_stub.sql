@@ -103,3 +103,15 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- fix_buyer_rls.sql: is_admin() (owner/manager) + admins_manage_profiles. Together
+-- with profiles_self_insert these are the paths the role guard must cover.
+create function public.is_admin()
+returns boolean language sql security definer stable as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role in ('owner', 'manager')
+  );
+$$;
+create policy "admins_manage_profiles" on public.profiles
+  for all using (public.is_admin()) with check (public.is_admin());

@@ -235,12 +235,19 @@ begin
   perform t.fail_unless(t.sqlstate_of(format($q$insert into material_entries (kind, site_id, material, amount) values ('refund', %L, 'Cement', 100)$q$, wh)) = '23514', 'bad kind accepted');
   perform t.fail_unless(t.sqlstate_of(format($q$insert into material_entries (kind, site_id, material, amount, quantity) values ('in', %L, 'Cement', 100, -1)$q$, wh)) = '23514', 'negative quantity accepted');
 
+  -- NOTE has no material; from_site_id is Out-only
+  perform t.fail_unless(t.sqlstate_of($q$insert into material_entries (kind, note, material) values ('note', 'hello', 'Cement')$q$) = '23514', 'note: material accepted');
+  perform t.fail_unless(t.sqlstate_of(format($q$insert into material_entries (kind, site_id, from_site_id, material, amount) values ('in', %L, %L, 'Cement', 100)$q$, wh, s2)) = '23514', 'in: from_site_id accepted');
+  perform t.fail_unless(t.sqlstate_of(format($q$insert into material_entries (kind, from_site_id, note) values ('note', %L, 'hi')$q$, wh)) = '23514', 'note: from_site_id accepted');
+
   -- valid ones go through; OUT defaults from_site_id to the Warehouse
   insert into material_entries (kind, site_id, material, quantity, unit) values ('out', s2, 'Cement', 4, 'bags');
   perform t.fail_unless((select from_site_id from material_entries where kind = 'out' and material = 'Cement') = wh,
     'out: from_site_id did not default to Warehouse');
   insert into material_entries (kind, note) values ('note', 'Slab poured, Block A');
   insert into material_entries (kind, site_id, material, amount, note) values ('in', wh, 'Miscellaneous', 250, 'Nails and gloves');
+  perform t.fail_unless((select from_site_id from material_entries where kind = 'in' and material = 'Miscellaneous') is null,
+    'from_site_id defaulted on a non-out entry');
 
   -- the constraint also guards UPDATEs
   perform set_config('request.jwt.claim.sub', mgr, true);
@@ -292,6 +299,11 @@ begin
   insert into material_sites (name) values ('Hosur Phase 1');
   perform t.fail_unless((select created_by from material_sites where name = 'Hosur Phase 1') = mgr::uuid, 'site created_by not defaulted');
   perform t.fail_unless((select kind from material_sites where name = 'Hosur Phase 1') = 'site', 'site kind default wrong');
+  -- created_by is stamped from the JWT (spoof overwritten) and immutable
+  insert into material_sites (name, created_by) values ('Spoof Site', '00000000-0000-0000-0000-0000000000a1');
+  perform t.fail_unless((select created_by from material_sites where name = 'Spoof Site') = mgr::uuid, 'site created_by spoofable');
+  update material_sites set created_by = '00000000-0000-0000-0000-0000000000a1' where name = 'Spoof Site';
+  perform t.fail_unless((select created_by from material_sites where name = 'Spoof Site') = mgr::uuid, 'site created_by rewritable');
   perform t.fail_unless(t.sqlstate_of($q$insert into material_sites (name) values ('hosur PHASE 1')$q$) = '23505', 'duplicate site name (case-insensitive) accepted');
   perform t.fail_unless(t.sqlstate_of($q$insert into material_sites (name, kind) values ('Bad', 'moon')$q$) = '23514', 'bad site kind accepted');
   -- archive then reuse the name
@@ -361,7 +373,8 @@ begin
   perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000a4') = 'agent', 'owner role change blocked (2)');
 end $$;
 
--- no JWT at all: SQL editor / admin_create_staff (security definer, service role)
+-- no JWT at all: SQL editor, or service_role (its JWT has no sub; the only role
+-- allowed to call admin_create_staff)
 do $$
 begin
   perform set_config('request.jwt.claim.sub', '', true);
@@ -370,8 +383,9 @@ begin
   update profiles set role = 'agent' where id = '00000000-0000-0000-0000-0000000000a4';
 end $$;
 
--- admin_create_staff pattern: a SECURITY DEFINER function that inserts a user
--- and then sets the role, called with a service-role JWT (no sub).
+-- admin_create_staff pattern: a function that inserts a user and then sets the
+-- role. It works because it is only callable by service_role, whose JWT has no
+-- sub, so auth.uid() is null inside it (SECURITY DEFINER is not what matters).
 create function public.test_create_staff(p_name text, p_role text) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare uid uuid := gen_random_uuid();
@@ -390,6 +404,93 @@ begin
   perform t.fail_unless((select role from profiles where id = uid) = 'owner', 'admin_create_staff pattern broken (owner)');
 end $$;
 drop function public.test_create_staff(text, text);
+
+-- ─── 9b. role lock covers INSERT (self-insert / admins_manage_profiles) ────
+-- Fixtures: auth users whose profile rows are then removed (superuser, no JWT).
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000b1', 'tmpmgr@t',  '{"full_name":"Tmp Manager"}'),
+  ('00000000-0000-0000-0000-0000000000b2', 'noprof1@t', '{"full_name":"No Profile One"}'),
+  ('00000000-0000-0000-0000-0000000000b3', 'noprof2@t', '{"full_name":"No Profile Two"}'),
+  ('00000000-0000-0000-0000-0000000000b4', 'noprof3@t', '{"full_name":"No Profile Three"}'),
+  ('00000000-0000-0000-0000-0000000000b5', 'noprof4@t', '{"full_name":"No Profile Four"}');
+update profiles set role = 'manager' where id = '00000000-0000-0000-0000-0000000000b1';
+delete from profiles where id in (
+  '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000b3',
+  '00000000-0000-0000-0000-0000000000b4', '00000000-0000-0000-0000-0000000000b5');
+
+-- a manager deletes their own profile, then re-inserts it as owner
+do $$
+declare msg text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+  set local role authenticated;
+  delete from profiles where id = '00000000-0000-0000-0000-0000000000b1';
+  perform t.fail_unless(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000b1'), 'manager could not delete own profile (test setup)');
+  begin
+    insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b1', 'Tmp Manager', 'owner');
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  reset role;
+  perform t.fail_unless(msg = 'Only an owner can change roles', 're-insert as owner not blocked, got: ' || msg);
+  perform t.fail_unless(not exists (select 1 from profiles where id = '00000000-0000-0000-0000-0000000000b1'), 'owner row was created');
+end $$;
+
+-- a manager inserts someone else's missing profile row as manager
+do $$
+declare msg text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+  set local role authenticated;
+  begin
+    insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b2', 'No Profile One', 'manager');
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  reset role;
+  perform t.fail_unless(msg = 'Only an owner can change roles', 'manager inserting a manager row not blocked, got: ' || msg);
+  -- omitting role (column default 'manager') is blocked too
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+  set local role authenticated;
+  begin
+    insert into profiles (id, full_name) values ('00000000-0000-0000-0000-0000000000b2', 'No Profile One');
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  reset role;
+  perform t.fail_unless(msg = 'Only an owner can change roles', 'insert with default role not blocked, got: ' || msg);
+end $$;
+
+-- a user with no profile self-inserts: owner blocked, buyer fine
+do $$
+declare msg text;
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b3', true);
+  set local role authenticated;
+  begin
+    insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b3', 'No Profile Two', 'owner');
+    msg := 'NO ERROR';
+  exception when others then msg := sqlerrm; end;
+  perform t.fail_unless(msg = 'Only an owner can change roles', 'self-insert as owner not blocked, got: ' || msg);
+  insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b3', 'No Profile Two', 'buyer');
+  reset role;
+  perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000b3') = 'buyer', 'self-insert as buyer failed');
+end $$;
+
+-- an owner inserts a manager row
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+  set local role authenticated;
+  insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b4', 'No Profile Three', 'manager');
+  reset role;
+  perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000b4') = 'manager', 'owner could not insert a manager row');
+end $$;
+
+-- no JWT (SQL editor / service role) can insert any role
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '', true);
+  insert into profiles (id, full_name, role) values ('00000000-0000-0000-0000-0000000000b5', 'No Profile Four', 'owner');
+  perform t.fail_unless((select role from profiles where id = '00000000-0000-0000-0000-0000000000b5') = 'owner', 'superuser insert blocked');
+end $$;
 
 -- ─── 10. handle_new_user ignores the role in sign-up metadata ──────────────
 do $$
