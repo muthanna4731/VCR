@@ -79,7 +79,7 @@ describe('materialKey', () => {
 
 describe('validateEntry', () => {
   it('accepts a valid in entry', () => {
-    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', quantity: '50', rate: '400' }).ok).toBe(true)
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', quantity: '50', unit: 'bags', rate: '400' }).ok).toBe(true)
   })
   it('in needs an amount', () => {
     expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1' }).errors.amount).toBeTruthy()
@@ -108,7 +108,16 @@ describe('validateEntry', () => {
     expect(errors.quantity).toBeTruthy()
   })
   it('accepts a valid out entry', () => {
-    expect(validateEntry({ kind: 'out', material: 'M-sand', siteId: 'a', fromSiteId: 'w', quantity: '2' }).ok).toBe(true)
+    expect(validateEntry({ kind: 'out', material: 'M-sand', siteId: 'a', fromSiteId: 'w', quantity: '2', unit: 'loads' }).ok).toBe(true)
+  })
+  it('requires a unit whenever a quantity is given', () => {
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', quantity: '50', amount: '100' }).errors.unit).toBeTruthy()
+    expect(validateEntry({ kind: 'out', material: 'M-sand', siteId: 'a', fromSiteId: 'w', quantity: '2' }).errors.unit).toBeTruthy()
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', amount: '100' }).errors.unit).toBeUndefined()
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', quantity: '50', unit: 'bags', amount: '100' }).ok).toBe(true)
+  })
+  it('Miscellaneous check ignores case and spacing', () => {
+    expect(validateEntry({ kind: 'in', material: 'miscellaneous ', siteId: 's1', amount: '5' }).errors.note).toBeTruthy()
   })
   it('note needs text', () => {
     expect(validateEntry({ kind: 'note', note: '  ' }).ok).toBe(false)
@@ -181,6 +190,14 @@ describe('summarize', () => {
     const many = MATERIALS.slice(0, 7).map((m, i) => ({ ...base, kind: 'in', entry_date: TODAY, site_id: 'A', material: m, amount: (i + 1) * 10 }))
     expect(summarize(many, sites, TODAY).topMaterials).toHaveLength(5)
   })
+  it('ignores deleted entries in warehouse stock', () => {
+    const r = summarize([
+      { ...base, kind: 'in', entry_date: TODAY, site_id: 'W', material: 'Cement', quantity: 10, unit: 'bags', amount: 1 },
+      { ...base, kind: 'in', entry_date: TODAY, site_id: 'W', material: 'Cement', quantity: 99, unit: 'bags', amount: 1, deleted_at: '2026-11-13T05:00:00Z' },
+      { ...base, kind: 'out', entry_date: TODAY, site_id: 'A', from_site_id: 'W', material: 'Cement', quantity: 7, unit: 'bags', deleted_at: '2026-11-13T05:00:00Z' },
+    ], sites, TODAY)
+    expect(r.warehouseStock).toEqual([{ material: 'Cement', unit: 'bags', quantity: 10 }])
+  })
   it('handles empty input', () => {
     expect(summarize([], sites, TODAY)).toEqual({ todaySpend: 0, monthSpend: 0, bySite: [], topMaterials: [], warehouseStock: [] })
   })
@@ -236,12 +253,19 @@ describe('formatters', () => {
     expect(formatINR(1234567)).toBe('₹12,34,567')
     expect(formatINR(1234.5)).toBe('₹1,234.50')
     expect(formatINR(0)).toBe('₹0')
+    expect(formatINR(1234.001)).toBe('₹1,234')
+    expect(formatINR(NaN)).toBe('₹0')
+    expect(formatINR(undefined)).toBe('₹0')
   })
   it('formatINRCompact', () => {
     expect(formatINRCompact(610000)).toBe('₹6.1 L')
     expect(formatINRCompact(12000000)).toBe('₹1.2 Cr')
     expect(formatINRCompact(48200)).toBe('₹48,200')
     expect(formatINRCompact(100000)).toBe('₹1 L')
+    expect(formatINRCompact(9_999_999)).not.toBe('₹100 L')
+    expect(formatINRCompact(9_999_999)).toBe('₹1 Cr')
+    expect(formatINRCompact(Infinity)).toBe('₹0')
+    expect(formatINRCompact(NaN)).toBe('₹0')
   })
 })
 
@@ -255,6 +279,7 @@ describe('isMissingTableError', () => {
   })
   it('ignores other errors', () => {
     expect(isMissingTableError({ code: '23505' })).toBe(false)
+    expect(isMissingTableError({ code: '42703', message: 'column "foo" does not exist' })).toBe(false)
     expect(isMissingTableError(null)).toBe(false)
   })
 })

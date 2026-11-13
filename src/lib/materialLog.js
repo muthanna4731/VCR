@@ -31,7 +31,7 @@ export function computeAmount({ quantity, rate, amount } = {}) {
 }
 
 export function validateEntry(entry = {}) {
-  const { kind, material, siteId, fromSiteId, quantity, rate, amount, note } = entry
+  const { kind, material, siteId, fromSiteId, quantity, unit, rate, amount, note } = entry
   const errors = {}
   const hasText = v => typeof v === 'string' && v.trim() !== ''
 
@@ -44,7 +44,9 @@ export function validateEntry(entry = {}) {
   } else if (kind === 'in' || kind === 'out') {
     if (!hasText(material)) errors.material = 'Choose a material'
     if (!hasText(siteId)) errors.siteId = 'Choose a site'
-    if (material === MISC && !hasText(note)) errors.note = 'Add a note for Miscellaneous'
+    if (materialKey(material) === materialKey(MISC) && !hasText(note)) errors.note = 'Add a note for Miscellaneous'
+
+    if (parseNumber(quantity) !== null && !hasText(unit)) errors.unit = 'Choose a unit'
 
     if (kind === 'in') {
       if (!errors.amount && computeAmount({ quantity, rate, amount }) === null) {
@@ -165,7 +167,8 @@ export function buildSiteOptions(layouts, sites) {
 
 export function formatINR(n) {
   const num = Number(n)
-  const whole = Number.isInteger(num)
+  if (!Number.isFinite(num)) return '₹0'
+  const whole = Number.isInteger(Math.round(num * 100) / 100)
   return '₹' + num.toLocaleString('en-IN', {
     minimumFractionDigits: whole ? 0 : 2,
     maximumFractionDigits: whole ? 0 : 2,
@@ -174,9 +177,11 @@ export function formatINR(n) {
 
 export function formatINRCompact(n) {
   const num = Number(n)
+  if (!Number.isFinite(num)) return '₹0'
   const abs = Math.abs(num)
   const trim = v => String(Math.round(v * 10) / 10)
-  if (abs >= 1e7) return `₹${trim(num / 1e7)} Cr`
+  // Switch to crore once lakhs would round up to 100 L.
+  if (abs >= 1e7 || Math.round((abs / 1e5) * 10) / 10 >= 100) return `₹${trim(num / 1e7)} Cr`
   if (abs >= 1e5) return `₹${trim(num / 1e5)} L`
   return formatINR(num)
 }
@@ -184,5 +189,5 @@ export function formatINRCompact(n) {
 export function isMissingTableError(err) {
   if (!err) return false
   if (['42P01', 'PGRST205', 'PGRST202'].includes(err.code)) return true
-  return /does not exist|schema cache/i.test(err.message ?? '')
+  return /(relation|table) .* does not exist|schema cache/i.test(err.message ?? '')
 }
