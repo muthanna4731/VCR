@@ -49,7 +49,7 @@
   - `validateEntry(entry): { ok: boolean, errors: Record<string,string> }`. Entry shape `{ kind, material, siteId, fromSiteId, quantity, unit, rate, amount, note }` (raw strings allowed). Rules: in = material + siteId + computed amount > 0; out = material + siteId + fromSiteId, `siteId !== fromSiteId`, quantity > 0; note = note non-empty; material `'Miscellaneous'` requires note; any `NaN` numeric field = error on that field.
   - `istDate(date?: Date): string`: `YYYY-MM-DD` in Asia/Kolkata (use `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' })`)
   - `materialKey(name: string): string`: trimmed, lowercased
-  - `summarize(entries, sites, today: string)`: returns `{ todaySpend, monthSpend, bySite: [{ siteId, name, amount }], topMaterials: [{ material, amount }], warehouseStock: [{ material, unit, quantity }] }`. Entries use DB column names (`kind, entry_date, site_id, from_site_id, material, quantity, unit, amount, deleted_at`); sites `[{ id, name, kind }]`. bySite/topMaterials are this month only, sorted desc; topMaterials max 5. Stock: all time, warehouse = sites with `kind === 'warehouse'`; skip rows without quantity; group by `materialKey + unit`; display name = first-seen spelling.
+  - `summarize(entries, sites, today: string)`: returns `{ todaySpend, monthSpend, bySite: [{ siteId, name, amount }], topMaterials: [{ material, amount }], warehouseStock: [{ material, unit, quantity }] }`. Entries use DB column names (`kind, entry_date, site_id, from_site_id, material, quantity, unit, amount, deleted_at`); sites `[{ id, name, kind }]`. bySite/topMaterials are this month only, sorted desc; topMaterials max 5. Stock: all time, warehouse = sites with `kind === 'warehouse'`; skip rows without quantity; group by `materialKey + unit`. Display name everywhere (topMaterials, stock): the canonical `MATERIALS` spelling when `materialKey` matches one, else the first-seen trimmed spelling.
   - `materialOptions(entries): string[]`: `MATERIALS` plus distinct custom names from entries (by `materialKey`) not already in `MATERIALS`, inserted before `'Miscellaneous'`, alphabetical.
   - `buildSiteOptions(layouts, sites): Array<{ value, label, siteId, layoutId, kind }>`: Warehouse(s) first, then every layout (using its linked site's id if one exists, else `siteId: null`), then private sites with no `layout_id`; archived sites excluded; `value` is `site:<id>` or `layout:<id>`.
   - `formatINR(n): string`: `₹20,000` (en-IN grouping, no decimals unless fractional)
@@ -81,7 +81,7 @@ expect(validateEntry({ kind: 'in', material: 'Miscellaneous', siteId: 's1', amou
   - `todaySpend 20000`, `monthSpend 60000`
   - `bySite = [W 40000, A 20000]`
   - `topMaterials[0] = { material: 'Cement', amount: 60000 }`
-  - `warehouseStock = [{ material: 'cement', unit: 'bags', quantity: 70 }]`. The display name is the first-seen spelling, trimmed. Iterate entries in the given order: the fixture lists the W entry first.
+  - `warehouseStock = [{ material: 'Cement', unit: 'bags', quantity: 70 }]` (canonical spelling, because `'cement '` matches `MATERIALS`). Add one custom-name case: `'kerb stones '` then `'Kerb Stones'` in at W → stock line named `'kerb stones'` (first seen, trimmed).
   - no NaN anywhere.
 
   `materialOptions([{ material: 'Kerb stones' }, { material: 'kerb stones' }, { material: 'cement' }])`: contains `'Kerb stones'` once, before `'Miscellaneous'`, and no duplicate Cement.
