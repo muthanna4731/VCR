@@ -38,6 +38,13 @@ export function validateEntry(entry = {}) {
   for (const [field, raw] of [['quantity', quantity], ['rate', rate], ['amount', amount]]) {
     if (Number.isNaN(parseNumber(raw))) errors[field] = 'Enter a valid number'
   }
+  // Mirror material_entries_numbers_sane: quantity > 0, rate >= 0 (any kind that has them).
+  if (kind === 'in' || kind === 'out') {
+    const q = parseNumber(quantity)
+    if (!errors.quantity && q !== null && !(q > 0)) errors.quantity = 'Quantity must be more than 0'
+    const r = parseNumber(rate)
+    if (!errors.rate && r !== null && !(r >= 0)) errors.rate = 'Rate cannot be negative'
+  }
 
   if (kind === 'note') {
     if (!hasText(note)) errors.note = 'Write a note'

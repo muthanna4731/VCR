@@ -123,6 +123,21 @@ describe('validateEntry', () => {
     expect(validateEntry({ kind: 'note', note: '  ' }).ok).toBe(false)
     expect(validateEntry({ kind: 'note', note: 'Slab poured' }).ok).toBe(true)
   })
+  it('mirrors the DB numbers_sane check: quantity must be > 0, rate >= 0', () => {
+    const base = { kind: 'in', material: 'Cement', siteId: 's1', unit: 'bags', amount: '100' }
+    expect(validateEntry({ ...base, quantity: '0' }).errors.quantity).toBeTruthy()
+    expect(validateEntry({ ...base, quantity: '-5' }).errors.quantity).toBeTruthy()
+    expect(validateEntry({ ...base, quantity: '5' }).ok).toBe(true)
+    expect(validateEntry({ ...base, rate: '-1' }).errors.rate).toBeTruthy()
+    expect(validateEntry({ ...base, rate: '0' }).ok).toBe(true)
+    const out = { kind: 'out', material: 'M-sand', siteId: 'a', fromSiteId: 'w', unit: 'loads', quantity: '2' }
+    expect(validateEntry({ ...out, quantity: '-2' }).errors.quantity).toBeTruthy()
+    expect(validateEntry({ ...out, rate: '-3' }).errors.rate).toBeTruthy()
+  })
+  it('in with a non-positive typed amount and no quantity x rate is rejected', () => {
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', amount: '0' }).errors.amount).toBeTruthy()
+    expect(validateEntry({ kind: 'in', material: 'Cement', siteId: 's1', amount: '-10' }).errors.amount).toBeTruthy()
+  })
   it('Miscellaneous requires a note', () => {
     expect(validateEntry({ kind: 'in', material: 'Miscellaneous', siteId: 's1', amount: '500' }).errors.note).toBeTruthy()
     expect(validateEntry({ kind: 'in', material: 'Miscellaneous', siteId: 's1', amount: '500', note: 'nails' }).ok).toBe(true)
