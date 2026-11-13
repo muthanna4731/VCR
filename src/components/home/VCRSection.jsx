@@ -1,11 +1,6 @@
 import vcrLogo from '../../images/VCR Logo-optimized.webp'
 import feature3 from '../../images/feature-3-optimized.webp'
 
-/* Welcome logo style. false = the real VCR logo in its own colours.
-   true = see-through: the logo becomes a window onto the house photo below.
-   Flip this one value to switch; nothing else needs to change. */
-const LOGO_SEE_THROUGH = false
-
 export default function VCRSection() {
   return (
     <section className="arrows-section-root">
@@ -21,34 +16,21 @@ export default function VCRSection() {
               through it. To revert to the original three-card V/C/R effect,
               delete the div below and uncomment the ORIGINAL block further down.
           ─────────────────────────────────────────────────────────────────── */}
-          {LOGO_SEE_THROUGH ? (
-            <div
-              className="vcr-logo-window"
-              style={{
-                maskImage: `url(${vcrLogo})`,
-                WebkitMaskImage: `url(${vcrLogo})`,
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-                maskPosition: 'center',
-                WebkitMaskPosition: 'center',
-              }}
-            >
-              <img src={feature3} alt="" className="vcr-logo-window-img" loading="lazy" decoding="async" draggable="false" />
-            </div>
-          ) : (
-            <img
-              src={vcrLogo}
-              alt="VCR Developers"
-              className="vcr-logo-solid"
-              width="1029"
-              height="551"
-              loading="lazy"
-              decoding="async"
-              draggable="false"
-            />
-          )}
+          <div
+            className="vcr-logo-window"
+            style={{
+              maskImage: `url(${vcrLogo})`,
+              WebkitMaskImage: `url(${vcrLogo})`,
+              maskSize: 'contain',
+              WebkitMaskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskRepeat: 'no-repeat',
+              maskPosition: 'center',
+              WebkitMaskPosition: 'center',
+            }}
+          >
+            <img src={feature3} alt="" className="vcr-logo-window-img" loading="lazy" decoding="async" draggable="false" />
+          </div>
 
           {/* ── ORIGINAL — uncomment to revert ──────────────────────────────
           import feature1b from '../../images/feature-1b.webp'
