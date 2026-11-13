@@ -1160,3 +1160,8 @@
 .footer-seo-links a:hover {
     color: #fff;
 }
+
+/* Phone number always on one line (it wrapped to "+ 91 98860 / 48471"). */
+.footer-contact[data-contact="phone"] .footer-contact-value {
+    white-space: nowrap
+}

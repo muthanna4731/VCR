@@ -7,8 +7,13 @@ const Header = forwardRef(function Header({ isHome, isContact }, ref) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const showBrowse = isHome || isContact
 
+  const className = [
+    'header-wrapper header-transparent',
+    isMenuOpen && 'header--opened',
+  ].filter(Boolean).join(' ')
+
   return (
-    <header ref={ref} className={`header-wrapper header-transparent${isMenuOpen ? ' header--opened' : ''}`}>
+    <header ref={ref} className={className}>
       <div className="container-container">
         <div className="header-content">
           <div className="header-logo">

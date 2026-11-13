@@ -1,9 +1,11 @@
 import { Outlet, NavLink } from 'react-router'
 import '../../css/buyer-portal.css'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 import { useAuth } from '../../hooks/useAuth'
 import NetworkBanner from '../layout/NetworkBanner'
 
 export default function BuyerLayout() {
+  useDocumentTitle('My plot | VCR App')
   const { profile, signOut } = useAuth()
 
   return (

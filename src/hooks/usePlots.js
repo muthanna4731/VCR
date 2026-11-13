@@ -6,8 +6,9 @@ import { runSupabaseRequest } from '../lib/supabaseRequest'
 function mapCity(row) {
   return {
     id: row.id,
-    name: row.name,
-    state: row.state,
+    // Trimmed: a stray trailing space in the cities table rendered "Nanjangudu , Karnataka".
+    name: row.name?.trim() ?? '',
+    state: row.state?.trim() ?? '',
     sortOrder: row.sort_order,
   }
 }

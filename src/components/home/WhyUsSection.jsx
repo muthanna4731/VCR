@@ -11,7 +11,7 @@ export default function WhyUsSection() {
           </div>
         </div>
         <div className="why-us-preview">
-          <video src="/videos/why-us.mp4" title="Why VCR" autoPlay playsInline loop muted></video>
+          <video src="/videos/why-us.mp4?v=2" title="Why VCR" autoPlay playsInline loop muted></video>
         </div>
       </div>
     </section>

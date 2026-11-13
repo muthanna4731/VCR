@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../css/agent.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 import { supabase } from '../lib/supabase'
 import { runSupabaseMutation, runSupabaseRequest } from '../lib/supabaseRequest'
 
@@ -17,6 +18,7 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 const STEPS = { SELECT: 'select', FORM: 'form', LOCATING: 'locating', RESULT: 'result' }
 
 export default function AgentPage() {
+  useDocumentTitle('Agent check-in | VCR App')
   const [agents, setAgents] = useState([])
   const [layouts, setLayouts] = useState([])
   const [loadingData, setLoadingData] = useState(true)

@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import '../css/dashboard.css'
+import useDocumentTitle from '../hooks/useDocumentTitle'
 
 function isStaffRole(role) {
   return ['admin', 'owner', 'manager'].includes(role)
 }
 
 export default function LoginPage() {
+  useDocumentTitle('Sign in | VCR App')
   const { user, profile, signIn, loading } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')

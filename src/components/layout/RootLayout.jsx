@@ -4,6 +4,7 @@ import Header from './Header'
 import Footer from './Footer'
 import LoadingLine from './LoadingLine'
 import NetworkBanner from './NetworkBanner'
+import ScrollReveal from './ScrollReveal'
 import useSeo from '../../seo/useSeo'
 import { getRouteMeta } from '../../seo/content'
 
@@ -24,6 +25,7 @@ export default function RootLayout() {
         <Outlet context={{ headerRef }} />
       </main>
       <Footer isHome={isHome} />
+      <ScrollReveal />
     </>
   )
 }

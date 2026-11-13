@@ -1,4 +1,3 @@
-import { ArrowSvg } from '../ui/ArrowSvg'
 import mortgageImg from '../../images/mortgage-services.webp'
 import propertyMgmtImg from '../../images/property-management.webp'
 import developmentImg from '../../images/development.webp'
@@ -14,15 +13,6 @@ function FeatureItem({ img, alt, title, text }) {
       </div>
       <div className="features-item-text">
         <p>{text}</p>
-      </div>
-      <div className="features-item-more">
-        <button type="button" className="button-button-round button-color-secondary button-inversed"
-          aria-haspopup="dialog" aria-expanded="false" data-state="closed">
-          <div className="button-content">
-            <div className="button-button-round-text"><span data-text="View More">View More</span></div>
-            <span className="button-icon-after"><ArrowSvg /></span>
-          </div>
-        </button>
       </div>
     </div>
   )

@@ -373,6 +373,17 @@ html {
     }
 }
 
+/* App routes (dashboard, buyer portal, agent check-in, login) are dense UI,
+   not full-bleed marketing sections. On the fluid scale above their text
+   dropped to 7–10px on laptops, so they get a fixed 10px rem on desktop.
+   The class is set by index.html before first paint and kept in sync by
+   <RootScale /> in App.jsx. */
+@media(min-width:768px) {
+    html.root-fixed {
+        font-size: 10px
+    }
+}
+
 html {
     height: 100%
 }

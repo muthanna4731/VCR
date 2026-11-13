@@ -1,5 +1,14 @@
-const CACHE_NAME = 'vcr-dash-v2'
-const PRECACHE_URLS = ['/admin']
+const CACHE_NAME = 'vcr-app-v3'
+// /app is the installed app's start_url (manifest.webmanifest); it routes each
+// user to their portal, so it is the shell to fall back to offline.
+const PRECACHE_URLS = ['/app', '/admin']
+
+// Pages that belong to the app. Keep in sync with src/lib/appRoutes.js.
+const APP_PREFIXES = ['/admin', '/my', '/login', '/agent', '/app']
+const isAppPath = (pathname) =>
+  APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+// Vite's hashed build output: safe to serve cache-first forever.
+const isBuildAsset = (pathname) => pathname.startsWith('/assets/')
 
 // Install: precache the dashboard shell
 self.addEventListener('install', (event) => {
@@ -28,7 +37,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
 
-  if (!url.pathname.startsWith('/admin')) {
+  // Registered at scope "/", so this sees marketing pages too: leave them
+  // alone. Previously only /admin paths were handled, which also skipped the
+  // /assets/* JS and CSS the dashboard needs, so it never worked offline.
+  if (!isAppPath(url.pathname) && !isBuildAsset(url.pathname)) {
     return
   }
 
@@ -56,7 +68,7 @@ self.addEventListener('fetch', (event) => {
           return response
         })
         .catch(() =>
-          caches.match(event.request).then((cached) => cached || caches.match('/admin'))
+          caches.match(event.request).then((cached) => cached || caches.match('/app'))
         )
     )
     return

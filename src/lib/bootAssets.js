@@ -11,7 +11,15 @@ import developmentImg from '../images/development.webp'
 import mdProfileImg from '../images/MD-Profile.webp'
 import smokeImg from '../images/smoke.webp'
 
-const BOOT_IMAGE_SOURCES = [
+// What the hero paints on the first screen.
+export const HERO_IMAGE_SOURCES = [backImg, houseImg, smokeImg, vcrLogo]
+
+// Everything else the home page shows. The intro counter (IntroLoader) waits
+// on these so nothing pops in after the reveal.
+//
+// These used to be awaited in main.jsx before React rendered at all, on every
+// route, holding /properties, /admin etc. back up to 3 s for home-page images.
+export const BOOT_IMAGE_SOURCES = [
   backImg,
   houseImg,
   vcrLogo,
@@ -24,29 +32,3 @@ const BOOT_IMAGE_SOURCES = [
   developmentImg,
   mdProfileImg,
 ]
-
-function preloadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image()
-
-    const finish = () => resolve(src)
-
-    img.onload = finish
-    img.onerror = finish
-    img.decoding = 'async'
-    img.fetchPriority = 'high'
-    img.src = src
-
-    if (img.complete) {
-      finish()
-    }
-  })
-}
-
-export async function preloadBootAssets({ timeoutMs = 3000 } = {}) {
-  const preloadWork = Promise.allSettled(BOOT_IMAGE_SOURCES.map(preloadImage))
-  const timeoutWork = new Promise((resolve) => window.setTimeout(resolve, timeoutMs))
-
-  await Promise.race([preloadWork, timeoutWork])
-}
-

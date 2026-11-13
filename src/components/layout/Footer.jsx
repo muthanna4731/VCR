@@ -74,7 +74,7 @@ function HomeFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+ 91 98860 48471</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+91&nbsp;98860&nbsp;48471</span></a></div>
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@ function InnerFooter() {
               </div>
               <div data-contact="phone" className="footer-contact">
                 <div className="footer-contact-label">Call Us</div>
-                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+ 91 98860 48471</span></a></div>
+                <div className="footer-contact-value"><a href="tel:+919886048471"><span>+91&nbsp;98860&nbsp;48471</span></a></div>
               </div>
             </div>
           </div>

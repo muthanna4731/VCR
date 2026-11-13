@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { AuthProvider } from './components/providers/AuthProvider'
 import RootLayout from './components/layout/RootLayout'
 import ScrollToTop from './components/layout/ScrollToTop'
+import RootScale from './components/layout/RootScale'
 import { AREAS, FAQ, GUIDE } from './seo/content'
 
 // Home page — loaded eagerly for first paint
@@ -17,8 +18,10 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 const GuidePage = lazy(() => import('./pages/GuidePage'))
 const FaqPage = lazy(() => import('./pages/FaqPage'))
 const AreaPage = lazy(() => import('./pages/AreaPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 // Auth + Agent
+const AppEntryPage = lazy(() => import('./pages/AppEntryPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AgentPage = lazy(() => import('./pages/AgentPage'))
 
@@ -66,6 +69,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <RootScale />
         <Routes>
           {/* Marketing site routes — wrapped in RootLayout (header + footer) */}
           <Route element={<RootLayout />}>
@@ -80,7 +84,11 @@ export default function App() {
             {AREAS.map(area => (
               <Route key={area.key} path={area.path.slice(1)} element={<Suspense fallback={<PublicFallback />}><AreaPage area={area} /></Suspense>} />
             ))}
+            <Route path="*" element={<Suspense fallback={<PublicFallback />}><NotFoundPage /></Suspense>} />
           </Route>
+
+          {/* App entry — sends each signed-in user to their portal, others to sign in */}
+          <Route path="app" element={<Suspense fallback={<DashFallback />}><AppEntryPage /></Suspense>} />
 
           {/* Auth */}
           <Route path="login" element={<Suspense fallback={<DashFallback />}><LoginPage /></Suspense>} />
@@ -103,6 +111,7 @@ export default function App() {
             <Route path="plot" element={<Suspense fallback={<DashFallback />}><BuyerPlotPage /></Suspense>} />
             <Route path="documents" element={<Suspense fallback={<DashFallback />}><BuyerDocumentsPage /></Suspense>} />
             <Route path="visits" element={<Suspense fallback={<DashFallback />}><BuyerVisitsPage /></Suspense>} />
+            <Route path="*" element={<Navigate to="/my" replace />} />
           </Route>
 
           {/* Admin dashboard — protected, no marketing layout */}
@@ -127,6 +136,7 @@ export default function App() {
             <Route path="customers" element={<Suspense fallback={<DashFallback />}><CustomersPage /></Suspense>} />
             <Route path="visits" element={<Suspense fallback={<DashFallback />}><VisitSchedule /></Suspense>} />
             <Route path="updates" element={<Suspense fallback={<DashFallback />}><UpdatesPage /></Suspense>} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,0 +1,23 @@
+/* Scroll reveal — see src/components/layout/ScrollReveal.jsx.
+   Same motion as the hero headline: 28px rise + fade, power3.out
+   (= ease-out-cubic), 0.9s. */
+
+.reveal-init {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+}
+
+.reveal-init.reveal-in {
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity .9s cubic-bezier(.215, .61, .355, 1) var(--reveal-delay, 0ms),
+        transform .9s cubic-bezier(.215, .61, .355, 1) var(--reveal-delay, 0ms);
+}
+
+@media print {
+    .reveal-init {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

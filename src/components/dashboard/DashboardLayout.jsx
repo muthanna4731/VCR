@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router'
 import '../../css/dashboard.css'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 import Sidebar from './Sidebar'
 import NetworkBanner from '../layout/NetworkBanner'
 
@@ -28,6 +29,7 @@ const PAGE_TITLES = {
 }
 
 export default function DashboardLayout() {
+  useDocumentTitle('Dashboard | VCR App')
   const location = useLocation()
   const navigate = useNavigate()
   const bottomNavRef = useRef(null)

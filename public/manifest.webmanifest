@@ -1,8 +1,8 @@
 {
   "name": "VCR Builders and Developers",
   "short_name": "VCR",
-  "description": "VCR Builders owner dashboard",
-  "start_url": "/admin",
+  "description": "VCR Builders app \u2014 dashboard, buyer portal and agent check-in",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -7,11 +7,12 @@
 //   - schema.org JSON-LD (business, projects, FAQ, breadcrumbs, article)
 //   - the page's text content inside #root, covered by the boot spinner and
 //     replaced by React on mount
-// It also writes sitemap.xml, robots.txt, llms.txt, llms-full.txt and app.html
+// It also writes sitemap-index.xml + sitemap-0.xml (and sitemap.xml), robots.txt, llms.txt, llms-full.txt and app.html
 // (a noindex shell that vercel.json serves for every non-prerendered route).
 //
 // Run: vite build && node scripts/prerender.mjs
 
+import { execFileSync } from 'node:child_process'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,8 +31,7 @@ const {
 } = await import('../src/seo/content.js')
 
 if (isFallbackSiteUrl(SITE_URL)) {
-  console.warn(`\n[prerender] WARNING: no SITE_URL set — canonical URLs use ${SITE_URL}.`)
-  console.warn('[prerender] Set SITE_URL (or VITE_SITE_URL) to the live domain before deploying.\n')
+  console.log(`[prerender] No SITE_URL set — using the default live domain ${SITE_URL}.`)
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -440,15 +440,102 @@ await write('app.html', template.replace(HEAD_RE, `<!--seo:head:start-->\n    ${
 
 // ─── sitemap.xml, robots.txt, llms.txt ──────────────────────────────────────
 
-await write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+// Same shape as pd-tool's @astrojs/sitemap output: /sitemap-index.xml points
+// at /sitemap-0.xml, which lists the pages. /sitemap.xml stays as a copy of the
+// URL list so anything already submitted to Search Console keeps working.
+//
+// lastmod comes from git — the last commit that touched the files a page is
+// built from — not from the build clock. Stamping every URL "today" on every
+// deploy is the kind of lastmod Google learns to distrust and then ignores.
+// No git (tarball build, shallow clone without history) → lastmod is omitted,
+// which is better than asserting a date we can't back up.
+
+const SHARED_SOURCES = ['src/seo/content.js']
+const PAGE_SOURCES = {
+  '/': ['src/pages/HomePage.jsx', 'src/components/home'],
+  '/properties': ['src/pages/PropertiesPage.jsx', 'src/components/properties'],
+  '/about': ['src/pages/AboutPage.jsx'],
+  '/paperwork': ['src/pages/PaperworkPage.jsx'],
+  '/contact': ['src/pages/ContactPage.jsx', 'src/components/properties/EnquiryForm.jsx'],
+  [GUIDE.path]: ['src/pages/GuidePage.jsx', 'src/components/seo'],
+  [FAQ.path]: ['src/pages/FaqPage.jsx', 'src/components/seo'],
+}
+const sourcesFor = (p) => PAGE_SOURCES[p]
+  || (p.startsWith('/properties/') ? ['src/pages/LayoutViewPage.jsx', 'src/components/properties'] : null)
+  || (AREAS.some(a => a.path === p) ? ['src/pages/AreaPage.jsx', 'src/components/seo'] : [])
+
+// Vercel clones with limited history. In a shallow clone `git log -1 -- path`
+// returns the oldest commit in the clone for any file not changed recently —
+// a wrong date, not a missing one — so lastmod is left out instead. Set
+// VERCEL_DEEP_CLONE=true in the Vercel project to get real dates there.
+const SHALLOW_CLONE = (() => {
+  try {
+    return execFileSync('git', ['rev-parse', '--is-shallow-repository'], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim() === 'true'
+  } catch {
+    return true
+  }
+})()
+
+function gitLastmod(files) {
+  if (SHALLOW_CLONE) return null
+  try {
+    // One call: git returns the newest commit touching any of the paths.
+    const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', ...files], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    return iso ? new Date(iso).toISOString() : null
+  } catch {
+    return null
+  }
+}
+
+// Priority is relative within this site only: the home page and the live plot
+// maps are what buyers act on; the guide and area pages support them.
+function sitemapMeta(p) {
+  if (p === '/') return { priority: '1.0', changefreq: 'weekly' }
+  if (p === '/properties' || p.startsWith('/properties/')) return { priority: '0.9', changefreq: 'weekly' }
+  if (p === GUIDE.path || AREAS.some(a => a.path === p)) return { priority: '0.8', changefreq: 'monthly' }
+  if (p === '/contact') return { priority: '0.5', changefreq: 'yearly' }
+  return { priority: '0.6', changefreq: 'monthly' }
+}
+
+const sitemapEntries = pages.map((page) => ({
+  loc: abs(page.path),
+  lastmod: gitLastmod([...sourcesFor(page.path), ...SHARED_SOURCES]),
+  ...sitemapMeta(page.path),
+}))
+
+const urlset = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${pages.map(p => `  <url><loc>${abs(p.path)}</loc><lastmod>${CONTENT_UPDATED}</lastmod></url>`).join('\n')}
+${sitemapEntries.map(e => [
+    '  <url>',
+    `    <loc>${esc(e.loc)}</loc>`,
+    e.lastmod && `    <lastmod>${e.lastmod}</lastmod>`,
+    `    <changefreq>${e.changefreq}</changefreq>`,
+    `    <priority>${e.priority}</priority>`,
+    '  </url>',
+  ].filter(Boolean).join('\n')).join('\n')}
 </urlset>
+`
+const newestLastmod = sitemapEntries.map(e => e.lastmod).filter(Boolean).sort().at(-1)
+
+await write('sitemap-0.xml', urlset)
+await write('sitemap.xml', urlset)
+await write('sitemap-index.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>${SITE_URL}/sitemap-0.xml</loc>${newestLastmod ? `\n    <lastmod>${newestLastmod}</lastmod>` : ''}
+  </sitemap>
+</sitemapindex>
 `)
 
 // '/my/' not '/my': robots rules are prefix matches and '/my' would block /mysore-plots-guide.
 // The bare /my route is covered by the X-Robots-Tag header in vercel.json.
-const PRIVATE_PATHS = ['/admin', '/my/', '/login', '/agent', '/app.html']
+// '/app$' and '/app/' rather than '/app': a bare prefix would also block
+// /apple-touch-icon.png. ($ is supported by Google and Bing.)
+const PRIVATE_PATHS = ['/admin', '/my/', '/login', '/agent', '/app$', '/app/', '/app.html']
 const AI_AGENTS = [
   'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-SearchBot', 'Claude-User',
   'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'Bingbot', 'Googlebot',
@@ -457,7 +544,7 @@ const group = (agent) => [`User-agent: ${agent}`, 'Allow: /', ...PRIVATE_PATHS.m
 await write('robots.txt', `# Search engines and AI assistants are welcome to read and cite this site.
 ${[...AI_AGENTS, '*'].map(group).join('\n\n')}
 
-Sitemap: ${SITE_URL}/sitemap.xml
+Sitemap: ${SITE_URL}/sitemap-index.xml
 `)
 
 const projectLines = PROJECTS.map((p) => {
@@ -525,4 +612,4 @@ ${FAQ.items.map(f => `**${f.q}**\n${f.a}`).join('\n\n')}
 ${PAPERWORK.map(d => `- ${d.title}: ${d.desc}`).join('\n')}
 `)
 
-console.log(`[prerender] ${pages.length} pages + app.html, sitemap.xml, robots.txt, llms.txt, llms-full.txt → ${SITE_URL}${liveLayouts ? ' (live layout data)' : ''}`)
+console.log(`[prerender] ${pages.length} pages + app.html, sitemap-index.xml (+ sitemap-0.xml), robots.txt, llms.txt, llms-full.txt → ${SITE_URL}${liveLayouts ? ' (live layout data)' : ''}`)

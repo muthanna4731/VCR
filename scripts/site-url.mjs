@@ -5,7 +5,9 @@
 //   1. SITE_URL / VITE_SITE_URL  — set this once the custom domain is live
 //   2. VERCEL_PROJECT_PRODUCTION_URL — Vercel system env, present on Vercel builds
 //   3. fallback below
-const FALLBACK_SITE_URL = 'https://vcr-three.vercel.app'
+// Live custom domain (Vercel project "vcr"). The old vcr-three.vercel.app
+// alias is gone (404), so it must never be the fallback again.
+const FALLBACK_SITE_URL = 'https://vcrdevelopers.in'
 
 export function resolveSiteUrl(env = process.env) {
   const explicit = env.SITE_URL || env.VITE_SITE_URL

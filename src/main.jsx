@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { preloadBootAssets } from './lib/bootAssets'
 
 // CSS imports — exact same order as original <link> tags in index.html
 import './css/fonts.css'
@@ -49,18 +48,11 @@ if (import.meta.env.DEV) {
     })
 }
 
-async function bootstrapApp() {
-  try {
-    await preloadBootAssets({ timeoutMs: 3000 })
-  } catch (error) {
-    console.error('Failed to preload boot assets', error)
-  }
-
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  )
-}
-
-bootstrapApp()
+// Render immediately. The home page's intro counter (IntroLoader) does its own
+// asset preloading with visible progress; other routes don't wait on
+// home-page images at all.
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)

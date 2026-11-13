@@ -68,6 +68,96 @@
       .seo-static table { border-collapse: collapse; width: 100%; }
       .seo-static th, .seo-static td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
 
+      /* ─── Home intro: run-up counter that slides up to unveil the site ───
+         Layout follows the truespirits.in loader: one large number dead centre
+         of the full screen with a hairline progress bar under it, nothing else.
+         Used twice with identical markup: the static copy in #root below (shown
+         from first paint when html.intro-boot is set) and IntroLoader.jsx,
+         which replaces it when React mounts and runs the real count. */
+      .intro {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(24px, 4vw, 40px);
+        /* White page with a soft sky-blue glow in the centre, taken from the
+           hero's sky (src/images/back.webp), so the colour carries straight
+           into the hero as the panel lifts. */
+        background:
+          radial-gradient(ellipse 60% 55% at 50% 50%, #b5d1ea 0%, rgba(181, 209, 234, 0.55) 45%, rgba(255, 255, 255, 0) 100%),
+          #fff;
+        color: #151717;
+        transform: translateY(0);
+        transition: transform 1100ms cubic-bezier(0.76, 0, 0.24, 1);
+        will-change: transform;
+        font-family: "Instrument Sans", "Instrument Sans Fallback", system-ui, sans-serif;
+      }
+
+      /* At 100 the whole panel slides up and off, unveiling the hero. */
+      .intro--out {
+        transform: translateY(-100%);
+        pointer-events: none;
+      }
+
+      .intro__count {
+        display: flex;
+        align-items: baseline;
+        line-height: 0.82;
+        transition: transform 1100ms cubic-bezier(0.76, 0, 0.24, 1), opacity 600ms ease;
+      }
+
+      /* The number leaves a little ahead of the panel edge. */
+      .intro--out .intro__count,
+      .intro--out .intro__bar {
+        transform: translateY(-12vh);
+        opacity: 0;
+      }
+
+      /* The number is the whole design: very large, tight, tabular so the
+         digits don't jitter as it counts. */
+      .intro__num {
+        font-size: clamp(96px, 30vw, 360px);
+        font-weight: 400;
+        letter-spacing: -0.05em;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      .intro__bar {
+        position: relative;
+        width: min(38vw, 22rem);
+        min-width: 160px;
+        height: 1px;
+        background: rgba(21, 23, 23, 0.14);
+        overflow: hidden;
+        transition: transform 1100ms cubic-bezier(0.76, 0, 0.24, 1), opacity 600ms ease;
+      }
+
+      .intro__bar-fill {
+        position: absolute;
+        inset: 0;
+        background: #046ebc;
+        transform: scaleX(0);
+        transform-origin: left center;
+        will-change: transform;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .intro,
+        .intro__count,
+        .intro__bar {
+          transition-duration: 1ms;
+        }
+      }
+
+      /* Static copy: hidden unless this load is the home page. */
+      .intro--boot { display: none; }
+      .intro-boot .intro--boot { display: flex; } /* flex, like .intro: block here un-centred the number until React took over */
+      .intro-boot .app-boot { display: none; }
+
       @keyframes app-boot-spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -78,12 +168,36 @@
     <link rel="preload" href="/src/fonts/instrument-sans.woff2" as="font" crossorigin="" type="font/woff2" />
     <link rel="preload" href="/src/fonts/lora.woff2" as="font" crossorigin="" type="font/woff2" />
 
-    <!-- Dashboard fonts & icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <!-- Home intro: decide before first paint so "/" opens on the counter,
+         never on the spinner or the crawler text. -->
+    <script>
+      if (location.pathname === '/' && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        document.documentElement.classList.add('intro-boot')
+      }
+    </script>
+    <!-- App routes (dashboard, buyer portal, agent, login): fixed 10px rem on
+         desktop (html.root-fixed in fonts.css) and the dashboard fonts/icons.
+         The marketing site never uses those fonts, so it no longer waits on
+         them. Keep APP_PREFIXES in sync with src/lib/appRoutes.js. -->
+    <script>
+      (function () {
+        var p = location.pathname
+        var app = ['/admin', '/my', '/login', '/agent', '/app'].some(function (x) {
+          return p === x || p.indexOf(x + '/') === 0
+        })
+        if (!app) return
+        document.documentElement.classList.add('root-fixed')
+        ;[
+          'https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Inter:wght@400;600;700&display=swap',
+          'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap'
+        ].forEach(function (href) {
+          document.write('<link rel="stylesheet" data-app-font href="' + href + '" />')
+        })
+      })()
+    </script>
 
     <!-- Preload hero image -->
-    <link rel="preload" as="image" href="/src/images/house.webp" />
+    <link rel="preload" as="image" href="/src/images/house-optimized.webp" fetchpriority="high" />
 
     <!-- SEO: everything between the seo:head markers is replaced per route by scripts/prerender.mjs -->
     <!--seo:head:start-->
@@ -109,21 +223,28 @@
       <div class="app-boot" aria-hidden="true">
         <div class="app-boot__mark"></div>
       </div>
+      <div class="intro intro--boot" aria-hidden="true">
+        <div class="intro__count"><span class="intro__num">000</span></div>
+        <div class="intro__bar"><span class="intro__bar-fill"></span></div>
+      </div>
       <!--seo:body-->
     </div>
-    <noscript><style>.app-boot { display: none; }</style></noscript>
+    <noscript><style>.app-boot, .intro { display: none !important; }</style></noscript>
     <script type="module" src="/src/main.jsx"></script>
     <script>
       const isLocalDevHost =
         location.hostname === 'localhost' ||
         location.hostname === '127.0.0.1'
-      const isAdminPath =
-        location.pathname === '/admin' ||
-        location.pathname.startsWith('/admin/')
+      // App routes only (keep in sync with src/lib/appRoutes.js). Scope "/" so
+      // the installed app's start_url (/app) and the buyer/agent portals are
+      // covered; sw.js ignores marketing pages.
+      const isAppPath = ['/admin', '/my', '/login', '/agent', '/app'].some(function (p) {
+        return location.pathname === p || location.pathname.indexOf(p + '/') === 0
+      })
 
-      if ('serviceWorker' in navigator && !isLocalDevHost && isAdminPath) {
+      if ('serviceWorker' in navigator && !isLocalDevHost && isAppPath) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js', { scope: '/admin' })
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
         })
       }
     </script>

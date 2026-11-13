@@ -134,16 +134,15 @@
     color: #000
 }
 
-.header-wrapper.header-transparent:not(.header--fixed) {
+/* The header is see-through on every page for the whole scroll: no white
+   bar behind the logo and nav. Only the open mobile menu gets a background,
+   so the logo and close button stay readable over the menu panel. */
+.header-wrapper.header-transparent:not(.header--opened) {
     background-color: rgba(0, 0, 0, 0)
 }
 
 .header-wrapper.header--opened {
     background-color: #fff;
-}
-
-.header-wrapper.header--hidden {
-    transform: translateY(-100%)
 }
 
 .header-content {
@@ -158,7 +157,9 @@
 
 @media(min-width:768px) {
     .header-content {
-        min-height: 7.8rem;
+        /* Equals the home hero's -9.8rem pull-up (hero.css), so the hero
+           starts exactly at the top edge under the transparent header. */
+        min-height: 9.8rem;
         grid-template-columns: 25rem 1fr 25rem
     }
 }
@@ -180,11 +181,13 @@
 
 @media(min-width:768px) {
     .header-logo {
-        padding-top: 0.8rem  /* DESKTOP: gap from top */
+        padding: 0.8rem 0    /* DESKTOP: equal gap above and below */
     }
     .header-logo img {
-        /* DESKTOP size & position */
-        width: 17.1rem;      /* DESKTOP: logo width */
+        /* DESKTOP size & position. The logo is 1200x643, so 15rem wide is
+           ~8rem tall and fits the 9.8rem header with room on both sides
+           (17.1rem overflowed it and touched the top edge). */
+        width: 15rem;        /* DESKTOP: logo width */
         height: auto;
         object-fit: contain;
         margin-left: 0       /* DESKTOP: horizontal offset */
@@ -192,11 +195,11 @@
 }
 
 /* Navbar text stays black over hero background */
-.header_-over-hero .header-content {
+.header-wrapper[data-over-hero] .header-content {
     color: #000
 }
 
-.header_-over-hero .header-logo img {
+.header-wrapper[data-over-hero] .header-logo img {
     filter: brightness(0) invert(1)
 }
 
