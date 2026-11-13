@@ -163,23 +163,12 @@ export default function AdminOverviewPage() {
         const bookedArc = Math.round((statusCounts.booked / total) * C)
         const availArc  = C - soldArc - bookedArc
 
-        // Revenue
-        let revenueCollected = 0
-        let revenuePending   = 0
-        for (const inst of installments) {
-          const amt = Number(inst.amount) || 0
-          if (inst.status === 'paid') revenueCollected += amt
-          else revenuePending += amt
-        }
-
         setData({
           layouts,
           enquiries,
-          statusCounts,
           total: plots.length,
           soldPct, bookedPct, availPct,
           soldArc, bookedArc, availArc,
-          revenueCollected, revenuePending,
           allInstallments: installments,
         })
         setLastSync(new Date())
@@ -199,10 +188,9 @@ export default function AdminOverviewPage() {
   if (error)   return <div className="dash-page"><MaterialLog /><p className="dash-error">{error}</p></div>
 
   const {
-    layouts, enquiries, statusCounts, total,
+    layouts, enquiries, total,
     soldPct, bookedPct, availPct,
     soldArc, bookedArc, availArc,
-    revenueCollected, revenuePending,
     allInstallments,
   } = data
 
